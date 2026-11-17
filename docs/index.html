@@ -4,32 +4,66 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sing Along</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Telugu:wght@400;600&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#faf6ee; --panel:#fff; --ink:#2b2118; --muted:#8a7c6c; --line:#e9e0d0; --accent:#b5541b; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#17130f; --panel:#211b15; --ink:#f1e8da; --muted:#a39380; --line:#3a3027; --accent:#e08a4f; } }
+  :root { --bg:#faf6ee; --panel:#fff; --ink:#2b2118; --muted:#8a7c6c; --line:#e9e0d0; --accent:#b5541b; --soft:#f6e3d3; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17130f; --panel:#211b15; --ink:#f1e8da; --muted:#a39380; --line:#3a3027; --accent:#e08a4f; --soft:#3b2a1d; } }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:"Noto Sans", system-ui, sans-serif; }
-  main { max-width:720px; margin:0 auto; padding:24px 16px; }
-  h1 { font-size:22px; margin:0 0 4px; } .sub { color:var(--muted); margin:0 0 20px; }
-  .card { display:block; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; color:inherit; text-decoration:none; }
-  .card:hover { border-color:var(--accent); }
-  .card .native { font-size:22px; font-weight:600; } .card .title { font-size:17px; } .card .blurb { color:var(--muted); font-size:14px; margin-top:4px; }
+  header { padding:36px 20px 28px; text-align:center; background:linear-gradient(180deg, var(--soft), var(--bg)); }
+  header h1 { margin:0; font-size:30px; letter-spacing:.3px; } header p { margin:8px 0 0; color:var(--muted); }
+  main { max-width:760px; margin:0 auto; padding:8px 16px 40px; }
+  .cont { display:block; background:var(--accent); color:#fff; border-radius:16px; padding:18px 20px; margin:0 0 22px; text-decoration:none; }
+  .cont .k { font-size:12px; text-transform:uppercase; letter-spacing:.8px; opacity:.85; }
+  .cont .t { font-size:20px; font-weight:600; margin-top:4px; } .cont .s { opacity:.9; margin-top:2px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:0 0 10px; font-weight:500; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; }
+  .card { display:block; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px; color:inherit; text-decoration:none; transition:border-color .15s, transform .15s; }
+  .card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .card .native { font-family:"Noto Serif Telugu", serif; font-size:26px; font-weight:600; line-height:1.4; }
+  .card .title { font-size:16px; margin-top:2px; } .card .blurb { color:var(--muted); font-size:14px; margin-top:8px; line-height:1.5; }
+  .card .badge { display:inline-block; margin-top:12px; font-size:12px; color:var(--accent); border:1px solid var(--accent); border-radius:20px; padding:2px 10px; }
 </style>
 </head>
 <body>
-<main>
-  <h1>Sing Along</h1>
-  <p class="sub">Pick a collection.</p>
-  <div id="list"></div>
-</main>
 <script src="collections.js"></script>
+<script src="live_data.js"></script>
+<script>
+const cols = window.COLLECTIONS || [];
+const get = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lastSlug = get("gg-last-collection");
+const last = cols.find((c) => c.slug === lastSlug) || null;
+// Opening the site goes straight to the collection used last (or the only one). "?home" shows this page instead.
+if (!new URLSearchParams(location.search).has("home")) {
+  const target = last || (cols.length === 1 ? cols[0] : null);
+  if (target) location.replace("player.html?c=" + encodeURIComponent(target.slug));
+}
+</script>
+<header>
+  <h1>Sing Along</h1>
+  <p>Songs to learn and sing, with their words in your script.</p>
+</header>
+<main>
+  <div id="cont"></div>
+  <h2 id="hd">Collections</h2>
+  <div class="grid" id="list"></div>
+</main>
 <script>
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const cols = window.COLLECTIONS || [];
+const nsKey = (c, k) => LiveData.storageNS(cols, c) + k;
+if (last) {  // "Continue" card: the last song opened in the last collection
+  let song = null; try { song = JSON.parse(get(nsKey(last, "gg-last-song"))); } catch {}
+  document.getElementById("cont").innerHTML =
+    `<a class="cont" href="player.html?c=${encodeURIComponent(last.slug)}${song && song.key ? "#" + encodeURIComponent(song.key) : ""}">` +
+    `<div class="k">Continue</div><div class="t">${esc(song && song.label ? song.label : last.title)}</div><div class="s">${esc(last.title)}</div></a>`;
+}
 document.getElementById("list").innerHTML = cols.map((c) =>
   `<a class="card" href="player.html?c=${encodeURIComponent(c.slug)}">${c.native ? `<div class="native">${esc(c.native)}</div>` : ""}` +
-  `<div class="title">${esc(c.title)}</div>${c.blurb ? `<div class="blurb">${esc(c.blurb)}</div>` : ""}</a>`).join("") ||
-  "<p class='sub'>No collections yet. Add one in collections.js.</p>";
+  `<div class="title">${esc(c.title)}</div>${c.blurb ? `<div class="blurb">${esc(c.blurb)}</div>` : ""}` +
+  `${last && c.slug === last.slug ? `<span class="badge">Last opened</span>` : ""}</a>`).join("") ||
+  "<p class='blurb'>No collections yet. Add one in collections.js.</p>";
 </script>
 </body>
 </html>

@@ -50,7 +50,8 @@
     header select { flex:1; min-width:0; }
     .phone-only { display:inline-block; }
     #phoneBar { display:flex; align-items:center; gap:8px; }
-    header #copyVideosBtn { display:none; }  /* on a phone the button lives in the gear panel */
+    header #copyVideosBtn, header #lyricsOnlyBtn { display:none; }
+    #phoneBar { flex-wrap:wrap; }  /* on a phone the button lives in the gear panel */
     #sheetRow { display:flex; }
     main { flex:1; min-height:0; display:flex; flex-direction:column; gap:0; padding:0; }
     .left { display:block; flex:none; }
@@ -113,6 +114,13 @@
   header .seg, #noTiming, #now, #syncBar, #loopBtn, #prevBtn, #nextBtn, #practiceLbl, #timingRow, #earlyBtn, #lateBtn, #offsetLbl, #saveRow, #saveHint, #scriptRow, #scriptSeg { display:none !important; }
   .info { padding:0 4px; margin-top:2px; border:0; background:none; color:var(--accent); cursor:pointer; font-size:14px; }
   #sheetRow { display:none; }
+  /* Lyrics only: the video (and its audio) is switched off entirely */
+  body.lyrics-only .video, body.lyrics-only #srcSel, body.lyrics-only #copyVideosBtn, body.lyrics-only #protoWarn,
+  body.lyrics-only .play-only, body.lyrics-only #sheetRow { display:none !important; }
+  body.lyrics-only main { grid-template-columns:1fr; max-width:900px; }
+  body.lyrics-only .left { position:static; }
+  .colitem { display:block; padding:12px 14px; border:1px solid var(--line); border-radius:10px; margin:8px 0; color:inherit; text-decoration:none; }
+  .colitem:hover, .colitem.cur { border-color:var(--accent); } .colitem .nm { font-size:18px; font-weight:600; } .colitem .bl { color:var(--muted); font-size:13px; }
   button:disabled { opacity:.45; cursor:not-allowed; } button:disabled:hover { border-color:var(--line); }
   #dataMsg { margin:10px 20px 0; }
   #dataMsg input { width:100%; }
@@ -120,9 +128,10 @@
 </head>
 <body>
 <header>
-  <h1><a href="./" title="All collections" style="color:inherit;text-decoration:none"><span class="te" id="colNative" style="color:inherit"></span> <span id="colTitle">Sing Along</span><span> · Sing Along</span></a></h1>
+  <h1><a href="./?home" class="colmenu" title="Switch collection" style="color:inherit;text-decoration:none"><span class="te" id="colNative" style="color:inherit"></span> <span id="colTitle">Sing Along</span><span> · Sing Along ▾</span></a></h1>
   <select id="songSel" aria-label="Song"></select>
   <select id="srcSel" aria-label="Rendition"></select>
+  <button id="lyricsOnlyBtn" title="Hide the video and audio and show only the lyrics">Lyrics only</button>
   <button id="copyVideosBtn" title="Copy the recordings you added on this device, ready to paste into the Videos tab of your Sheet">Copy added videos</button>
   <select id="scriptSel" aria-label="Language"><option value="te">తెలుగు</option><option value="dev">देवनागरी</option><option value="en">English</option></select>
   <button id="addSongBtn" title="Add any song with your own lyrics">+ Your own song</button>
@@ -147,7 +156,7 @@
     <div class="card now" id="now"></div>
 
     <div class="tools" id="tools">
-    <div class="card phone-only" id="phoneBar"><a href="./" title="All collections" style="color:inherit;text-decoration:none"><b><span class="te" id="colNative2"></span> <span id="colTitle2"></span> · Sing Along</b></a><span class="grow"></span><button id="addSongBtn2">+ Your own song</button></div>
+    <div class="card phone-only" id="phoneBar"><a href="./?home" class="colmenu" title="Switch collection" style="color:inherit;text-decoration:none"><b><span class="te" id="colNative2"></span> <span id="colTitle2"></span> · Sing Along ▾</b></a><span class="grow"></span><button id="addSongBtn2">+ Your own song</button><button id="lyricsOnlyBtn2" title="Hide the video and audio and show only the lyrics">Lyrics only</button></div>
     <div class="card sync-bar" id="syncBar">
       <span><span class="rec-dot"></span><b>Setting timing</b></span>
       <button class="primary bigbtn" id="markBtn">Next line <kbd>Space</kbd></button>
@@ -215,6 +224,12 @@
   <p class="hint">Paste the text you copied with <b>Copy timing</b>. It replaces the timing for the song and rendition it was copied from.</p>
   <textarea id="importText" spellcheck="false"></textarea>
   <div class="row"><button id="importCancel">Cancel</button><button class="primary" id="importOk">Use this timing</button></div>
+</dialog>
+
+<dialog id="colDlg">
+  <h2>Collections</h2>
+  <div id="colList"></div>
+  <div class="row"><a href="./?home">All collections page</a><span class="grow"></span><button id="colClose">Close</button></div>
 </dialog>
 
 <dialog id="songDlg">
@@ -313,6 +328,9 @@ function textOf(l, which) {
 }
 
 /* ---------- player (YouTube, or a clock for testing with #mock) ---------- */
+class NullPlayer {  // stands in for the video when it is switched off: does nothing, loads nothing
+  load() {} play() {} pause() {} seek() {} time() { return 0; } isPlaying() { return false; } setRate() {}
+}
 class ClockPlayer {
   constructor() { this.t0 = 0; this.base = 0; this.playing = false; this.rate = 1; }
   load(id, start) { this.base = start; this.playing = false; }
@@ -466,6 +484,7 @@ function selectSong(key, srcIndex) {
   buildLines(); loadTiming(); S.loop = false; $("loopBtn").classList.remove("on");
   if (S.src && S.player) S.player.load(S.src.id, S.src.start || 0);
   renderLyrics(); renderNow(null);
+  store.set("gg-last-song", { key: S.song.key, label: S.song.title });
   try { history.replaceState(null, "", `#${S.song.key}`); } catch {}
 }
 
@@ -622,6 +641,21 @@ $("songOk").onclick = () => {
   $("songDlg").close(); renderSelectors(); selectSong(key, 0);
 };
 $("addSongBtn").onclick = () => openSongDialog(null);
+function applyLyricsOnly() {
+  const on = prefs.lyricsOnly === true; document.body.classList.toggle("lyrics-only", on);
+  ["lyricsOnlyBtn", "lyricsOnlyBtn2"].forEach((id) => { const b = $(id); b.classList.toggle("on", on); b.textContent = on ? "Show video" : "Lyrics only";
+    b.title = on ? "Bring the video back" : "Hide the video and audio and show only the lyrics"; });
+}
+function setLyricsOnly(on) {
+  prefs.lyricsOnly = on; savePrefs();
+  if (on) { try { S.player.pause(); } catch {} S.realPlayer = S.player instanceof NullPlayer ? S.realPlayer : S.player; S.player = new NullPlayer(); }
+  else if (S.player instanceof NullPlayer) {
+    S.player = S.realPlayer || new YouTubePlayer(() => { S.ready = true; S.player.setRate(prefs.rate); });
+    if (S.src) S.player.load(S.src.id, S.src.start || 0);
+  }
+  applyLyricsOnly();
+}
+$("lyricsOnlyBtn").onclick = $("lyricsOnlyBtn2").onclick = () => setLyricsOnly(prefs.lyricsOnly !== true);
 function updateCopyBtn() {  // grey out the copy buttons while nothing has been added on this device
   const n = LiveData.addedVideoRows(DATA ? DATA.songs : [], (x) => store.get(`gg-extra-src:gg${x.no}`, [])).length;
   ["copyVideosBtn", "copyVideosBtn2"].forEach((id) => { const b = $(id); b.disabled = n === 0;
@@ -715,7 +749,15 @@ function applyAvailableScripts() {  // hide scripts, word breaks and translitera
   $("translitBtn").hidden = !has.en;
   if (!has[prefs.script]) prefs.script = has.te ? "te" : Object.keys(has).find((k) => has[k] && k !== "tes");
 }
+function openColDialog() {
+  $("colList").innerHTML = COLS.map((c) => { const nm = (c.names && c.names[prefs.script]) || (prefs.script === "te" && c.native) || c.title;
+    return `<a class="colitem${c === COL ? " cur" : ""}" href="player.html?c=${encodeURIComponent(c.slug)}"><div class="nm ${scriptClass(prefs.script)}">${escapeHtml(nm)}${c === COL ? " ✓" : ""}</div>${c.blurb ? `<div class="bl">${escapeHtml(c.blurb)}</div>` : ""}</a>`; }).join("");
+  $("colDlg").showModal();
+}
+document.querySelectorAll(".colmenu").forEach((a) => { a.onclick = (e) => { e.preventDefault(); document.body.classList.remove("tools-open"); openColDialog(); }; });
+$("colClose").onclick = () => $("colDlg").close();
 function applyCollection() {  // the collection's name follows the language dropdown
+  try { localStorage.setItem("gg-last-collection", COL ? COL.slug : ""); } catch {}
   const name = (CFG.names && CFG.names[prefs.script]) || (prefs.script === "te" && CFG.native) || CFG.title;
   ["", "2"].forEach((n) => { const el = $("colNative" + n); el.textContent = name; el.className = scriptClass(prefs.script); $("colTitle" + n).textContent = ""; });
   document.title = `${CFG.title} — Sing Along`;
@@ -734,9 +776,11 @@ function applyCollection() {  // the collection's name follows the language drop
   const mock = location.hash === "#mock" || location.search.includes("mock");
   if (location.protocol === "file:" && !mock) $("protoWarn").hidden = false;
   if (mock) { S.player = new ClockPlayer(); $("player").innerHTML = `<div style="color:#fff;padding:20px">Test clock (no video)</div>`; }
+  else if (prefs.lyricsOnly === true) S.player = new NullPlayer();  // video off: nothing is loaded from YouTube at all
   else S.player = new YouTubePlayer(() => { S.ready = true; S.player.setRate(prefs.rate); });
+  applyLyricsOnly();
   if (!S.songs.length) { $("lyrics").innerHTML = ""; return; }  // nothing to show yet; the message above explains
-  const fromHash = location.hash.slice(1);
+  const fromHash = location.hash.slice(1) || (store.get("gg-last-song", null) || {}).key;
   selectSong(S.songs.some((s) => s.key === fromHash) ? fromHash : S.songs[0].key);
   window.addEventListener("hashchange", () => { const k = location.hash.slice(1); if (k !== S.song.key && S.songs.some((s) => s.key === k)) selectSong(k); });
   requestAnimationFrame(tick);
