@@ -1,0 +1,4 @@
+src/data/
+src/dist/
+.claude/settings.local.json
+.DS_Store
