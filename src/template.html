@@ -546,12 +546,15 @@ function openSongDialog(song) {
   $("songTitle").value = song ? song.title : ""; $("songUrl").value = song && song.sources[0] ? `https://www.youtube.com/watch?v=${song.sources[0].id}${song.sources[0].start ? "&t=" + song.sources[0].start : ""}` : "";
   $("songLyrics").value = song ? song.raw || "" : ""; $("songDelete").hidden = !song;
   ["songTitle", "songLyrics"].forEach((id) => { $(id).style.display = ""; $(id).previousElementSibling.style.display = ""; });
+  $("songTitle").previousElementSibling.textContent = "Title"; $("songTitle").placeholder = "e.g. Mandalinchu Rama";
   $("songDlg").querySelector("h2").textContent = song ? "Edit song" : "Add your own song";
   $("songDlg").showModal();
 }
 function openUrlDialog() {
   urlOnly = true; editing = null; $("songDelete").hidden = true; $("songUrl").value = "";
-  ["songTitle", "songLyrics"].forEach((id) => { $(id).style.display = "none"; $(id).previousElementSibling.style.display = "none"; });
+  $("songTitle").value = ""; $("songTitle").style.display = ""; $("songTitle").previousElementSibling.style.display = "";
+  $("songTitle").previousElementSibling.textContent = "Name of this recording (optional)"; $("songTitle").placeholder = "e.g. M.S. Subbulakshmi, or Practice version";
+  $("songLyrics").style.display = "none"; $("songLyrics").previousElementSibling.style.display = "none";
   $("songDlg").querySelector("h2").textContent = `Another rendition of “${S.song.title}”`;
   $("songDlg").showModal();
 }
@@ -573,7 +576,7 @@ $("songOk").onclick = () => {
   const yt = parseYouTube($("songUrl").value);
   if (!yt) { toast("That YouTube link didn't work"); return; }
   if (urlOnly) {
-    const extra = store.get(`gg-extra-src:${S.song.key}`, []); extra.push({ label: `Your link ${extra.length + 1}`, id: yt.id, start: yt.start, end: null });
+    const extra = store.get(`gg-extra-src:${S.song.key}`, []); extra.push({ label: $("songTitle").value.trim() || `Your link ${extra.length + 1}`, id: yt.id, start: yt.start, end: null });
     store.set(`gg-extra-src:${S.song.key}`, extra); $("songDlg").close();
     S.song.sources.push(extra[extra.length - 1]); const idx = S.song.sources.length - 1; store.set(`gg-src:${S.song.key}`, idx); selectSong(S.song.key, idx); return;
   }
