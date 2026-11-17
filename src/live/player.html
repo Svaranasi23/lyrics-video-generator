@@ -624,6 +624,7 @@ $("copyVideosBtn").onclick = () => {
 $("addSongBtn2").onclick = () => { document.body.classList.remove("tools-open"); openSongDialog(null); };
 
 function syncPrefButtons() {
+  if (typeof applyCollection === "function" && typeof CFG !== "undefined") applyCollection();
   [...$("scriptSeg").children].forEach((b) => b.classList.toggle("on", b.dataset.script === prefs.script)); $("scriptSel").value = prefs.script;
   $("splitBtn").classList.toggle("on", prefs.split); $("translitBtn").classList.toggle("on", prefs.translit);
   $("slokaBtn").classList.toggle("on", prefs.slokas); $("meaningBtn").classList.toggle("on", prefs.meanings === true);
@@ -692,8 +693,9 @@ async function loadData() {
   }
 }
 
-function applyCollection() {
-  ["", "2"].forEach((n) => { $("colNative" + n).textContent = CFG.native || ""; $("colTitle" + n).textContent = CFG.native ? "" : CFG.title; });
+function applyCollection() {  // the collection's name follows the language dropdown
+  const name = (CFG.names && CFG.names[prefs.script]) || CFG.native || CFG.title;
+  ["", "2"].forEach((n) => { const el = $("colNative" + n); el.textContent = name; el.className = scriptClass(prefs.script); $("colTitle" + n).textContent = ""; });
   document.title = `${CFG.title} — Sing Along`;
 }
 
