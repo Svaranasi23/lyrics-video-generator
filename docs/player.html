@@ -113,6 +113,7 @@
   header .seg, #noTiming, #now, #syncBar, #loopBtn, #prevBtn, #nextBtn, #practiceLbl, #timingRow, #earlyBtn, #lateBtn, #offsetLbl, #saveRow, #saveHint, #scriptRow, #scriptSeg { display:none !important; }
   .info { padding:0 4px; margin-top:2px; border:0; background:none; color:var(--accent); cursor:pointer; font-size:14px; }
   #sheetRow { display:none; }
+  button:disabled { opacity:.45; cursor:not-allowed; } button:disabled:hover { border-color:var(--line); }
   #dataMsg { margin:10px 20px 0; }
   #dataMsg input { width:100%; }
 </style>
@@ -608,7 +609,7 @@ $("songOk").onclick = () => {
   if (!yt) { toast("That YouTube link didn't work"); return; }
   if (urlOnly) {
     const extra = store.get(`gg-extra-src:${S.song.key}`, []); extra.push({ label: $("songTitle").value.trim() || `Your link ${extra.length + 1}`, id: yt.id, start: yt.start, end: null });
-    store.set(`gg-extra-src:${S.song.key}`, extra); $("songDlg").close();
+    store.set(`gg-extra-src:${S.song.key}`, extra); updateCopyBtn(); $("songDlg").close();
     S.song.sources.push(extra[extra.length - 1]); const idx = S.song.sources.length - 1; store.set(`gg-src:${S.song.key}`, idx); selectSong(S.song.key, idx); return;
   }
   const title = $("songTitle").value.trim() || "Untitled song"; const raw = $("songLyrics").value;
@@ -620,6 +621,11 @@ $("songOk").onclick = () => {
   $("songDlg").close(); renderSelectors(); selectSong(key, 0);
 };
 $("addSongBtn").onclick = () => openSongDialog(null);
+function updateCopyBtn() {  // grey out the copy buttons while nothing has been added on this device
+  const n = LiveData.addedVideoRows(DATA ? DATA.songs : [], (x) => store.get(`gg-extra-src:gg${x.no}`, [])).length;
+  ["copyVideosBtn", "copyVideosBtn2"].forEach((id) => { const b = $(id); b.disabled = n === 0;
+    b.title = n ? `Copy the ${n} recording${n > 1 ? "s" : ""} you added on this device, ready to paste into the Videos tab of your Sheet` : "Nothing to copy: no recordings added on this device yet"; });
+}
 function copyAddedVideos() {
   const rows = LiveData.addedVideoRows(DATA ? DATA.songs : [], (x) => store.get(`gg-extra-src:gg${x.no}`, []));
   if (!rows.length) { toast("No recordings added on this device yet"); return; }
@@ -711,7 +717,7 @@ function applyCollection() {  // the collection's name follows the language drop
   await loadData();
   // merge user-added renditions into built-in songs
   if (DATA) DATA.songs.forEach((s) => { const extra = store.get(`gg-extra-src:gg${s.no}`, []); s.sources.push(...extra); });
-  renderSelectors(); syncPrefButtons();
+  renderSelectors(); syncPrefButtons(); updateCopyBtn();
   if (matchMedia("(max-width: 860px)").matches) $("settings").open = true;  // on a phone the gear panel shows the settings straight away
   const mock = location.hash === "#mock" || location.search.includes("mock");
   if (location.protocol === "file:" && !mock) $("protoWarn").hidden = false;
