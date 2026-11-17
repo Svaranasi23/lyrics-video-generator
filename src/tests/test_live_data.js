@@ -1,6 +1,6 @@
 // Unit tests for live/live_data.js. Run: node tests/test_live_data.js
 const assert = require("assert");
-const { parseCSV, buildData, ytId } = require("../live/live_data.js");
+const { parseCSV, buildData, ytId, addedVideoRows, toTSV } = require("../live/live_data.js");
 
 let fails = 0;
 function check(name, fn) {
@@ -47,5 +47,14 @@ check("error: line for unknown verse", bad({ lines: "song_no,verse,line_no,telug
 check("error: duplicate verse", bad({ verses: T.verses + "1,G1,gitam,,\n" }, "duplicate"));
 check("error: video for unknown song", bad({ videos: "song_no,label,youtube_url\n9,x,https://youtu.be/a\n" }, "song 9"));
 check("error: TBD in start_sec names the row", bad({ videos: "song_no,label,youtube_url,start_sec,end_sec\n2,x,https://youtu.be/a,TBD,TBD\n" }, "Videos row 2"));
+
+const extras = { 2: [{ label: "Tab\there\nnewline", id: "abc", start: 90, end: null }], 5: [{ label: "Practice", id: "zzz", start: 0, end: 200 }] };
+const rows = addedVideoRows([{ no: 1 }, { no: 2 }, { no: 5 }], (x) => extras[x.no]);
+check("added videos: rows in Videos-tab column order", () => assert.deepStrictEqual(rows, [
+  [2, "Tab here newline", "https://www.youtube.com/watch?v=abc", 90, ""], [5, "Practice", "https://www.youtube.com/watch?v=zzz", 0, 200]]));
+check("added videos: songs with none give no rows; TSV pastes as columns", () => {
+  assert.deepStrictEqual(addedVideoRows([{ no: 1 }], () => undefined), []);
+  assert.strictEqual(toTSV(rows), "2\tTab here newline\thttps://www.youtube.com/watch?v=abc\t90\t\n5\tPractice\thttps://www.youtube.com/watch?v=zzz\t0\t200");
+});
 
 process.exit(fails ? 1 : 0);

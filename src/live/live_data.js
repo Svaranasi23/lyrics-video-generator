@@ -107,6 +107,16 @@
     return { collection: title || "Collection", songs: [...songs.keys()].sort((a, b) => a - b).map((k) => songs.get(k)) };
   }
 
-  const api = { parseCSV, rowsOf, buildData, ytId };
+  /** Recordings added on this device -> rows in the Videos tab's column order. extraFor(song) returns [{label,id,start,end}]. */
+  function addedVideoRows(songs, extraFor) {
+    const clean = (v) => String(v == null ? "" : v).replace(/[\t\r\n]+/g, " ").trim();
+    const rows = [];
+    for (const s of songs) for (const v of extraFor(s) || [])
+      rows.push([s.no, clean(v.label), "https://www.youtube.com/watch?v=" + v.id, v.start || 0, v.end == null ? "" : v.end]);
+    return rows;
+  }
+  const toTSV = (rows) => rows.map((r) => r.join("\t")).join("\n");
+
+  const api = { parseCSV, rowsOf, buildData, ytId, addedVideoRows, toTSV };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.LiveData = api;
 })(typeof window !== "undefined" ? window : globalThis);

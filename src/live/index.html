@@ -194,6 +194,10 @@
         <button id="clearBtn">Clear timing</button>
       </div>
       <p class="hint" id="saveHint" style="margin:10px 0 0">Timing is saved in this browser automatically. Use <b>Copy timing</b> to keep a backup or move it to another device.</p>
+      <div class="row" style="margin-top:10px">
+        <span class="label">Sheet</span>
+        <button id="copyVideosBtn" title="Copy the recordings you added on this device, ready to paste into the Videos tab of your Sheet">Copy my added videos</button>
+      </div>
     </details>
     </div>
   </section>
@@ -606,6 +610,11 @@ $("songOk").onclick = () => {
   $("songDlg").close(); renderSelectors(); selectSong(key, 0);
 };
 $("addSongBtn").onclick = () => openSongDialog(null);
+$("copyVideosBtn").onclick = () => {
+  const rows = LiveData.addedVideoRows(DATA ? DATA.songs : [], (x) => store.get(`gg-extra-src:gg${x.no}`, []));
+  if (!rows.length) { toast("No recordings added on this device yet"); return; }
+  copyText(LiveData.toTSV(rows), `Copied ${rows.length} recording${rows.length > 1 ? "s" : ""}. Paste under the last row of the Videos tab.`);
+};
 $("addSongBtn2").onclick = () => { document.body.classList.remove("tools-open"); openSongDialog(null); };
 
 function syncPrefButtons() {
