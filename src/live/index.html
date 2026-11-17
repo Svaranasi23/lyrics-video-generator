@@ -106,6 +106,9 @@
   .toast.show { opacity:.95; }
   kbd { font-family:var(--sans); font-size:12px; border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 5px; background:var(--bg); }
   a { color:var(--accent); }
+  /* timing is switched off: the sheet has no timings, the page just shows the words */
+  header .seg, #noTiming, #now, #syncBar, #loopBtn, #prevBtn, #nextBtn, #practiceLbl, #timingRow, #earlyBtn, #lateBtn, #offsetLbl, #saveRow, #saveHint, #scriptRow, #scriptSeg { display:none !important; }
+  .info { padding:0 4px; margin-top:2px; border:0; background:none; color:var(--accent); cursor:pointer; font-size:14px; }
   #dataMsg { margin:10px 20px 0; }
   #dataMsg input { width:100%; }
 </style>
@@ -115,6 +118,7 @@
   <h1><span class="te" style="color:inherit">గీత గోవిందం</span> <span>· Sing Along</span></h1>
   <select id="songSel" aria-label="Song"></select>
   <select id="srcSel" aria-label="Rendition"></select>
+  <select id="scriptSel" aria-label="Language"><option value="te">తెలుగు</option><option value="dev">देवनागरी</option><option value="en">English</option></select>
   <button id="addSongBtn" title="Add any song with your own lyrics">+ Your own song</button>
   <span class="grow"></span>
   <div class="seg" role="group" aria-label="Mode">
@@ -148,7 +152,7 @@
 
     <div class="card play-only">
       <div class="row">
-        <span class="label">Practice</span>
+        <span class="label" id="practiceLbl">Practice</span>
         <button id="loopBtn" title="Repeat the current line">Loop line</button>
         <button id="prevBtn" title="Jump to the previous line">◀ Line</button>
         <button id="nextBtn" title="Jump to the next line">Line ▶</button>
@@ -162,7 +166,7 @@
     <details class="card" id="settings">
       <summary>Display &amp; timing tools</summary>
       <div class="row" style="margin-top:12px">
-        <span class="label">Script</span>
+        <span id="scriptRow"><span class="label">Script</span></span>
         <div class="seg" id="scriptSeg">
           <button data-script="te" class="on">తెలుగు</button><button data-script="dev">देवनागरी</button><button data-script="en">English</button>
         </div>
@@ -170,17 +174,17 @@
         <button id="splitBtn" title="Show the Telugu with word breaks (pada-chheda)">Word breaks</button>
         <button id="translitBtn" class="on" title="Show the English transliteration under each line">Transliteration</button>
         <button id="slokaBtn" title="Include the slokas before this ashtapadi">Opening slokas</button>
-        <button id="meaningBtn" class="on" title="Show the meaning under each verse (only verses that have one)" hidden>Meanings</button>
+        <button id="meaningBtn" class="on" title="Open every verse meaning at once (or tap the ⓘ beside a verse)" hidden>All meanings</button>
       </div>
-      <div class="row" style="margin-top:10px">
+      <div class="row" style="margin-top:10px" id="textRow">
         <span class="label">Text</span>
         <button id="smallerBtn">A−</button><button id="biggerBtn">A+</button>
-        <span class="label" style="margin-left:6px">Timing</span>
+        <span id="timingRow"><span class="label" style="margin-left:6px">Timing</span></span>
         <button id="earlyBtn" title="Show lines a quarter-second earlier">−¼s</button>
         <button id="lateBtn" title="Show lines a quarter-second later">+¼s</button>
         <span id="offsetLbl" class="hint"></span>
       </div>
-      <div class="row" style="margin-top:10px">
+      <div class="row" style="margin-top:10px" id="saveRow">
         <span class="label">Save</span>
         <button id="copyBtn" title="Copy this rendition's timing so it can be saved or shared">Copy timing</button>
         <button id="importBtn">Paste timing</button>
@@ -265,10 +269,10 @@ function allSongs() {
 }
 
 /* ---------- state ---------- */
-const prefs = store.get("gg-prefs", { script: "te", split: false, translit: true, slokas: false, size: 1, rate: 1 });
+const prefs = store.get("gg-prefs-v2", { script: "te", split: false, translit: false, slokas: false, meanings: false, size: 1, rate: 1 });
 const S = { songs: [], song: null, src: null, lines: [], timing: { events: [], offset: 0 },
             mode: "play", loop: false, curIdx: -1, player: null, ready: false };
-function savePrefs() { store.set("gg-prefs", prefs); }
+function savePrefs() { store.set("gg-prefs-v2", prefs); }
 
 function timingKey() { return S.song && S.src ? `gg-sync:${S.song.key}:${S.src.id}:${S.src.start || 0}` : null; }
 function loadTiming() {
@@ -360,22 +364,23 @@ function scriptClass(w) { return w === "dev" ? "dev" : w === "en" ? "en" : "te";
 function renderLyrics() {
   const marksById = {};
   S.timing.events.forEach((e) => { (marksById[e[1]] = marksById[e[1]] || []).push(e[0]); });
-  const sub = prefs.translit && prefs.script !== "en" ? "en" : prefs.script === "en" ? "te" : null;
-  let html = "", lastKind = null, lastV = null, pend = null, lastKey = null;
-  const hasMeanings = S.lines.some((l) => l.mean), showMean = hasMeanings && prefs.meanings !== false;
+  const sub = prefs.translit && prefs.script !== "en" ? "en" : null;
+  let html = "", lastKind = null, lastV = null, pend = null, lastKey = null, mi = 0;
+  const hasMeanings = S.lines.some((l) => l.mean); S.openMeans = S.openMeans || new Set();
   $("meaningBtn").hidden = !hasMeanings;
-  const meanHtml = (m) => { const p = ["te", "en"].filter((k) => m[k]).map((k) => `<div class="${k}">${escapeHtml(m[k])}</div>`);
-    return p.length ? `<div class="mean">${p.join("")}</div>` : ""; };
+  const meanHtml = (x) => { const p = ["te", "en"].filter((k) => x.m[k]).map((k) => `<div class="${k}">${escapeHtml(x.m[k])}</div>`);
+    const open = prefs.meanings === true || S.openMeans.has(x.id);
+    return p.length ? `<div class="mean" id="mean-${x.id}"${open ? "" : " hidden"}>${p.join("")}</div>` : ""; };
   if (!S.lines.length) html = `<p class="hint" style="padding:10px">The spreadsheet has no lyrics for this ashtapadi yet. Use <b>+ Your own song</b> to paste them, or add them to the sheet.</p>`;
   S.lines.forEach((l) => {
     const key = l.kind + "|" + l.v;
     if (key !== lastKey) { if (pend) html += meanHtml(pend); pend = null; lastKey = key; }  // a verse's meaning goes after its last line
-    if (showMean && l.mean) pend = l.mean;
+    if (l.mean) pend = { m: l.mean, id: ++mi };
     if (l.kind !== lastKind) { html += `<div class="sep">${l.kind === "sloka" ? "Opening slokas" : l.kind === "section" ? "" : "Ashtapadi"}</div>`; lastKind = l.kind; }
     const showV = l.v !== lastV; lastV = l.v;
     const vtxt = !showV ? "" : typeof l.v === "number" ? l.v : String(l.v || "").replace(/^Sarga /, "");
     const m = S.mode === "sync" && marksById[l.id] ? `<div class="marks">⏱ ${marksById[l.id].map((t) => fmt(t).slice(0, 5)).join("  ")}</div>` : "";
-    html += `<div class="ln ${l.kind}" data-id="${l.id}"><div class="v">${vtxt}</div><div>
+    html += `<div class="ln ${l.kind}" data-id="${l.id}"><div class="v">${vtxt}${l.mean ? `<br><button class="info" data-mid="${mi}" title="Meaning" aria-label="Meaning">ⓘ</button>` : ""}</div><div>
       <div class="t ${scriptClass(prefs.script)}">${escapeHtml(textOf(l, prefs.script))}</div>
       ${sub ? `<div class="s ${scriptClass(sub)}">${escapeHtml(textOf(l, sub))}</div>` : ""}${m}</div></div>`;
   });
@@ -436,6 +441,7 @@ function tick() {
 
 /* ---------- selection ---------- */
 function selectSong(key, srcIndex) {
+  S.openMeans = new Set();  // meanings you opened belong to the previous song
   S.song = S.songs.find((s) => s.key === key) || S.songs[0];
   S.src = S.song.sources[srcIndex != null ? srcIndex : store.get(`gg-src:${S.song.key}`, 0)] || S.song.sources[0] || null;
   $("songSel").value = S.song.key; renderSources();
@@ -488,6 +494,8 @@ $("restartBtn").onclick = () => {
   S.timing = { events: [], offset: 0 }; saveTiming(); S.player.seek(S.src ? S.src.start || 0 : 0); S.player.play(); renderLyrics();
 };
 $("lyrics").onclick = (e) => {
+  const info = e.target.closest(".info");
+  if (info) { const id = +info.dataset.mid, el = $("mean-" + id); if (el) { el.hidden = !el.hidden; el.hidden ? S.openMeans.delete(id) : S.openMeans.add(id); } return; }
   const row = e.target.closest(".ln"); if (!row) return;
   if (S.mode === "sync") doMark(row.dataset.id); else seekToLine(row.dataset.id);
 };
@@ -496,11 +504,12 @@ $("prevBtn").onclick = () => stepLine(-1);
 $("nextBtn").onclick = () => stepLine(1);
 $("rateSeg").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; prefs.rate = +b.dataset.rate; savePrefs(); S.player.setRate(prefs.rate);
   [...$("rateSeg").children].forEach((x) => x.classList.toggle("on", x === b)); };
+$("scriptSel").onchange = (e) => { prefs.script = e.target.value; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
 $("scriptSeg").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; prefs.script = b.dataset.script; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
 $("splitBtn").onclick = () => { prefs.split = !prefs.split; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
 $("translitBtn").onclick = () => { prefs.translit = !prefs.translit; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
 $("slokaBtn").onclick = () => { prefs.slokas = !prefs.slokas; savePrefs(); syncPrefButtons(); buildLines(); renderLyrics(); };
-$("meaningBtn").onclick = () => { prefs.meanings = prefs.meanings === false; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
+$("meaningBtn").onclick = () => { prefs.meanings = !prefs.meanings; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
 $("toolsBtn").onclick = () => document.body.classList.toggle("tools-open");
 $("smallerBtn").onclick =() => { prefs.size = Math.max(0.7, +(prefs.size - 0.1).toFixed(2)); savePrefs(); syncPrefButtons(); };
 $("biggerBtn").onclick = () => { prefs.size = Math.min(1.8, +(prefs.size + 0.1).toFixed(2)); savePrefs(); syncPrefButtons(); };
@@ -597,9 +606,9 @@ $("songOk").onclick = () => {
 $("addSongBtn").onclick = () => openSongDialog(null);
 
 function syncPrefButtons() {
-  [...$("scriptSeg").children].forEach((b) => b.classList.toggle("on", b.dataset.script === prefs.script));
+  [...$("scriptSeg").children].forEach((b) => b.classList.toggle("on", b.dataset.script === prefs.script)); $("scriptSel").value = prefs.script;
   $("splitBtn").classList.toggle("on", prefs.split); $("translitBtn").classList.toggle("on", prefs.translit);
-  $("slokaBtn").classList.toggle("on", prefs.slokas); $("meaningBtn").classList.toggle("on", prefs.meanings !== false);
+  $("slokaBtn").classList.toggle("on", prefs.slokas); $("meaningBtn").classList.toggle("on", prefs.meanings === true);
   [...$("rateSeg").children].forEach((b) => b.classList.toggle("on", +b.dataset.rate === prefs.rate));
   document.documentElement.style.setProperty("--size", prefs.size);
   $("splitBtn").hidden = prefs.script === "dev";
@@ -621,9 +630,11 @@ function pubIdFrom(text) {
   const m = /\/spreadsheets\/d\/e\/([^/?#]+)/.exec(text || ""); if (m) return m[1];
   return /^2PACX-[\w-]+$/.test((text || "").trim()) ? text.trim() : "";
 }
-function sheetId() { return pubIdFrom(new URLSearchParams(location.search).get("sheet")) || store.get("gg-sheet-id", "") || CFG.pubId; }
+const FIXTURE = () => new URLSearchParams(location.search).get("fixture");
+function sheetId() { if (FIXTURE()) return "fixture"; return pubIdFrom(new URLSearchParams(location.search).get("sheet")) || store.get("gg-sheet-id", "") || CFG.pubId; }
 async function fetchTab(id, name) {
-  const gid = CFG.gids[name]; const url = `https://docs.google.com/spreadsheets/d/e/${id}/pub?gid=${gid}&single=true&output=csv`;
+  const gid = CFG.gids[name], fx = FIXTURE();  // ?fixture=dir reads local CSV files instead (for testing)
+  const url = fx ? `${fx}/${name}.csv` : `https://docs.google.com/spreadsheets/d/e/${id}/pub?gid=${gid}&single=true&output=csv`;
   const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 10000);
   try {
     const r = await fetch(url, { signal: ctl.signal });
