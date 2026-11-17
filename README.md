@@ -33,7 +33,8 @@ push that one file. Each collection keeps its own saved data in the browser.
 
 ## Publishing
 GitHub Pages serves the `docs/` folder of `main`
-(Settings → Pages → Deploy from branch → `main` → `/docs`). Only the page code is in Git; the lyrics live in
+(Settings → Pages → Deploy from branch → `main` → `/docs`). After changing `collections.js` or `live_data.js`, bump the
+`?v=` number on their `<script>` lines in `index.html` and `player.html`, so browsers don't keep the old copy for ~10 minutes. Only the page code is in Git; the lyrics live in
 the Sheet. Everything in a published Sheet is readable by anyone with its link.
 
 ## Running it locally
