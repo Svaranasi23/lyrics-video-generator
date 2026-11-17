@@ -1,14 +1,11 @@
 #!/bin/sh
-# Rebuild the page from the template workbook and run the tests.
-# Uses the project's .venv (has openpyxl). Page test needs Playwright + Chrome (the user's Mac only).
+# Run the tests. The page reads the published Google Sheet live, so there is no build step any more.
+# Python tests use the project's .venv (has openpyxl); the reader tests run in Node.
 set -e
 cd "$(dirname "$0")"
 PY=../.venv/bin/python
 [ -x "$PY" ] || PY=python3
+node tests/test_live_data.js
 $PY tests/test_build.py
-$PY build.py data/gg-template.xlsx template.html dist/index.html
-if $PY -c "import playwright" 2>/dev/null; then
-  $PY tests/test_page.py dist/index.html
-else
-  echo "skipping tests/test_page.py (Playwright not installed)"
-fi
+[ -f data/gg-template.xlsx ] && $PY tests/parity_live.py data/gg-template.xlsx
+echo "(tests/test_page.py is out of date: it expects the old baked-in page)"
