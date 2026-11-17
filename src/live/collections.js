@@ -8,13 +8,13 @@
 //   gids   - the tab ids of that Sheet's four tabs (from the tab addresses, #gid=...)
 window.COLLECTIONS = [
   {
-    slug: "gita-govindam",
-    title: "Gita Govindam",
-    native: "గీత గోవిందం",
-    names: { te: "గీత గోవిందం", dev: "गीत गोविन्दम्", en: "Gita Govindam" },
+    slug: "jayadeva-ashtapadi",
+    title: "Jayadeva Ashtapadi",
+    native: "జయదేవ అష్టపది",
+    names: { te: "జయదేవ అష్టపది", dev: "जयदेव अष्टपदी", en: "Jayadeva Ashtapadi" },
     part: "Ashtapadi",
-    blurb: "The 24 Ashtapadis of Jayadeva",
-    pubId: "",
+    blurb: "The 24 Ashtapadis from Jayadeva's Gita Govindam",
+    pubId: "2PACX-1vQlQR-cUihBNeOPL8TshhHIN3TyCqTjd43hEY8LmzDnIb7KG3GNHMNIZrPpLm6jqrEdf_XN39HuEze6",
     gids: { songs: 1233158892, verses: 1471833179, lines: 924686161, videos: 1420763163 },
   },
   // Spare entry for the next collection: copy it, fill it in, and remove the two slashes at the start of each line.
