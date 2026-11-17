@@ -37,10 +37,29 @@
   .left { display:flex; flex-direction:column; gap:14px; min-width:0; }
   summary { cursor:pointer; font-weight:500; color:var(--muted); }
   @media (min-width: 861px) { .left { position:sticky; top:84px; align-self:start; } }
+  .phone-only { display:none; }
+  .tools { display:contents; }
+  .mean { margin:2px 10px 10px 44px; padding:8px 12px; border-left:3px solid var(--accent); background:var(--accent-soft);
+          border-radius:0 8px 8px 0; font-size:calc(14.5px * var(--size)); line-height:1.6; white-space:pre-line; }
+  .mean div + div { margin-top:6px; }
+  /* Phone: video on top, lyrics + meanings fill the rest of the screen, everything else behind the gear button */
   @media (max-width: 860px) {
-    header { position:static; }
-    .video { position:sticky; top:0; z-index:4; border-radius:0 0 12px 12px; margin:-12px -12px 0; }
-    .now { min-height:110px; }
+    body { height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+    header { position:static; flex-wrap:nowrap; padding:8px 10px; gap:8px; }
+    header h1, #addSongBtn, header .seg, header .grow { display:none; }
+    header select { flex:1; min-width:0; }
+    .phone-only { display:inline-block; }
+    main { flex:1; min-height:0; display:flex; flex-direction:column; gap:0; padding:0; }
+    .left { display:block; flex:none; }
+    .video { border-radius:0; }
+    .now, #noTiming { display:none !important; }
+    .tools { display:none; }
+    body.tools-open .tools, body.syncing .tools { display:block; position:fixed; left:0; right:0; bottom:0; max-height:60dvh; overflow:auto;
+      background:var(--bg); padding:10px; border-top:1px solid var(--line); z-index:10; box-shadow:0 -6px 20px rgba(0,0,0,.18); }
+    .tools > * { margin-bottom:10px; }
+    .lyrics { flex:1; min-height:0; max-height:none; border-radius:0; border-width:1px 0 0; padding:4px; }
+    .ln { grid-template-columns:26px 1fr; padding:8px 6px; }
+    .mean { margin-left:34px; }
   }
   .video { position:relative; aspect-ratio:16/9; background:#000; border-radius:12px; overflow:hidden; }
   .video > div, .video iframe { position:absolute; inset:0; width:100%; height:100%; }
@@ -100,6 +119,7 @@
     <button id="modePlay" class="on">Sing along</button>
     <button id="modeSync">Set timing</button>
   </div>
+  <button id="toolsBtn" class="phone-only" aria-label="Settings" title="Settings">⚙</button>
 </header>
 
 <main>
@@ -112,6 +132,7 @@
 
     <div class="card now" id="now"></div>
 
+    <div class="tools" id="tools">
     <div class="card sync-bar" id="syncBar">
       <span><span class="rec-dot"></span><b>Setting timing</b></span>
       <button class="primary bigbtn" id="markBtn">Next line <kbd>Space</kbd></button>
@@ -145,6 +166,7 @@
         <button id="splitBtn" title="Show the Telugu with word breaks (pada-chheda)">Word breaks</button>
         <button id="translitBtn" class="on" title="Show the English transliteration under each line">Transliteration</button>
         <button id="slokaBtn" title="Include the slokas before this ashtapadi">Opening slokas</button>
+        <button id="meaningBtn" class="on" title="Show the meaning under each verse (only verses that have one)" hidden>Meanings</button>
       </div>
       <div class="row" style="margin-top:10px">
         <span class="label">Text</span>
@@ -163,6 +185,7 @@
       </div>
       <p class="hint" id="saveHint" style="margin:10px 0 0">Timing is saved in this browser automatically. Use <b>Copy timing</b> to keep a backup or move it to another device.</p>
     </details>
+    </div>
   </section>
 
   <section class="card lyrics" id="lyrics" aria-label="Lyrics"></section>
@@ -332,9 +355,16 @@ function renderLyrics() {
   const marksById = {};
   S.timing.events.forEach((e) => { (marksById[e[1]] = marksById[e[1]] || []).push(e[0]); });
   const sub = prefs.translit && prefs.script !== "en" ? "en" : prefs.script === "en" ? "te" : null;
-  let html = "", lastKind = null, lastV = null;
+  let html = "", lastKind = null, lastV = null, pend = null, lastKey = null;
+  const hasMeanings = S.lines.some((l) => l.mean), showMean = hasMeanings && prefs.meanings !== false;
+  $("meaningBtn").hidden = !hasMeanings;
+  const meanHtml = (m) => { const p = ["te", "en"].filter((k) => m[k]).map((k) => `<div class="${k}">${escapeHtml(m[k])}</div>`);
+    return p.length ? `<div class="mean">${p.join("")}</div>` : ""; };
   if (!S.lines.length) html = `<p class="hint" style="padding:10px">The spreadsheet has no lyrics for this ashtapadi yet. Use <b>+ Your own song</b> to paste them, or add them to the sheet.</p>`;
   S.lines.forEach((l) => {
+    const key = l.kind + "|" + l.v;
+    if (key !== lastKey) { if (pend) html += meanHtml(pend); pend = null; lastKey = key; }  // a verse's meaning goes after its last line
+    if (showMean && l.mean) pend = l.mean;
     if (l.kind !== lastKind) { html += `<div class="sep">${l.kind === "sloka" ? "Opening slokas" : l.kind === "section" ? "" : "Ashtapadi"}</div>`; lastKind = l.kind; }
     const showV = l.v !== lastV; lastV = l.v;
     const vtxt = !showV ? "" : typeof l.v === "number" ? l.v : String(l.v || "").replace(/^Sarga /, "");
@@ -343,6 +373,7 @@ function renderLyrics() {
       <div class="t ${scriptClass(prefs.script)}">${escapeHtml(textOf(l, prefs.script))}</div>
       ${sub ? `<div class="s ${scriptClass(sub)}">${escapeHtml(textOf(l, sub))}</div>` : ""}${m}</div></div>`;
   });
+  if (pend) html += meanHtml(pend);
   $("lyrics").innerHTML = html;
   S.curIdx = -2; // force highlight refresh
   const has = S.timing.events.length > 0;
@@ -463,7 +494,9 @@ $("scriptSeg").onclick = (e) => { const b = e.target.closest("button"); if (!b) 
 $("splitBtn").onclick = () => { prefs.split = !prefs.split; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
 $("translitBtn").onclick = () => { prefs.translit = !prefs.translit; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
 $("slokaBtn").onclick = () => { prefs.slokas = !prefs.slokas; savePrefs(); syncPrefButtons(); buildLines(); renderLyrics(); };
-$("smallerBtn").onclick = () => { prefs.size = Math.max(0.7, +(prefs.size - 0.1).toFixed(2)); savePrefs(); syncPrefButtons(); };
+$("meaningBtn").onclick = () => { prefs.meanings = prefs.meanings === false; savePrefs(); syncPrefButtons(); renderLyrics(); S.curIdx = -3; };
+$("toolsBtn").onclick = () => document.body.classList.toggle("tools-open");
+$("smallerBtn").onclick =() => { prefs.size = Math.max(0.7, +(prefs.size - 0.1).toFixed(2)); savePrefs(); syncPrefButtons(); };
 $("biggerBtn").onclick = () => { prefs.size = Math.min(1.8, +(prefs.size + 0.1).toFixed(2)); savePrefs(); syncPrefButtons(); };
 $("earlyBtn").onclick = () => { S.timing.offset = +((S.timing.offset || 0) - 0.25).toFixed(2); saveTiming(); renderLyrics(); };
 $("lateBtn").onclick = () => { S.timing.offset = +((S.timing.offset || 0) + 0.25).toFixed(2); saveTiming(); renderLyrics(); };
@@ -557,7 +590,7 @@ $("addSongBtn").onclick = () => openSongDialog(null);
 function syncPrefButtons() {
   [...$("scriptSeg").children].forEach((b) => b.classList.toggle("on", b.dataset.script === prefs.script));
   $("splitBtn").classList.toggle("on", prefs.split); $("translitBtn").classList.toggle("on", prefs.translit);
-  $("slokaBtn").classList.toggle("on", prefs.slokas);
+  $("slokaBtn").classList.toggle("on", prefs.slokas); $("meaningBtn").classList.toggle("on", prefs.meanings !== false);
   [...$("rateSeg").children].forEach((b) => b.classList.toggle("on", +b.dataset.rate === prefs.rate));
   document.documentElement.style.setProperty("--size", prefs.size);
   $("splitBtn").hidden = prefs.script === "dev";
