@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Sheet prototype</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; max-width: 760px; margin-inline: auto; line-height: 1.5; }
+  input[type=text] { width: 100%; padding: 8px; font: inherit; box-sizing: border-box; }
+  button, select { font: inherit; padding: 7px 12px; margin: 6px 6px 6px 0; }
+  .ok { color: #1b7a3a; } .bad { color: #b3261e; white-space: pre-wrap; } .hint { color: #666; font-size: 14px; }
+  .ln { padding: 4px 0; border-bottom: 1px solid #eee; font-size: 19px; } .v { color: #888; font-size: 12px; margin-right: 8px; }
+  ul { padding-left: 20px; }
+</style>
+</head>
+<body>
+<h2>Live Sheet prototype</h2>
+<p class="hint">Reads your published Google Sheet straight from Google — no build, no files. Paste the "Publish to web" link (or just the long ID).</p>
+<input type="text" id="pub" placeholder="https://docs.google.com/spreadsheets/d/e/2PACX-…/pubhtml">
+<button id="load">Load</button>
+<p id="status" class="hint"></p>
+<div id="out" hidden>
+  <select id="song"></select>
+  <select id="script"><option value="te">తెలుగు</option><option value="dev">देवनागरी</option><option value="en">English</option></select>
+  <h3>Videos</h3><ul id="videos"></ul>
+  <h3>Lyrics</h3><div id="lyrics"></div>
+</div>
+<script src="live_data.js"></script>
+<script>
+// The tab ids (gid) of THIS sheet. Each collection will carry its own set later.
+const GIDS = { songs: 1233158892, verses: 1471833179, lines: 924686161, videos: 1420763163 };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const mmss = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+let DATA = null;
+
+function pubId(text) {
+  const m = /\/spreadsheets\/d\/e\/([^/?#]+)/.exec(text); if (m) return m[1];
+  return /^2PACX-[\w-]+$/.test(text.trim()) ? text.trim() : null;
+}
+async function fetchTab(id, gid, name) {
+  const url = `https://docs.google.com/spreadsheets/d/e/${id}/pub?gid=${gid}&single=true&output=csv`;
+  let r; try { r = await fetch(url); } catch (e) { throw new Error(`Couldn't reach Google for the ${name} tab (${e.message}). Is the Sheet published to the web?`); }
+  if (!r.ok) throw new Error(`The ${name} tab came back with HTTP ${r.status}. Publish that tab (or the whole document) to the web as a web page.`);
+  return r.text();
+}
+async function load() {
+  const id = pubId($("pub").value);
+  if (!id) { $("status").className = "bad"; $("status").textContent = "That doesn't look like a published-sheet link (it should contain /spreadsheets/d/e/2PACX-…)."; return; }
+  try { localStorage.setItem("live-pub", $("pub").value); } catch (e) {}
+  $("status").className = "hint"; $("status").textContent = "Loading…";
+  const t0 = performance.now();
+  try {
+    const [songs, verses, lines, videos] = await Promise.all(["songs", "verses", "lines", "videos"].map((k) => fetchTab(id, GIDS[k], k)));
+    DATA = LiveData.buildData({ songs, verses, lines, videos }, "Gita Govindam");
+  } catch (e) { $("status").className = "bad"; $("status").textContent = e.message; $("out").hidden = true; return; }
+  const s = DATA.songs, n = (f) => s.reduce((a, x) => a + f(x), 0);
+  $("status").className = "ok";
+  $("status").textContent = `Loaded in ${Math.round(performance.now() - t0)} ms: ${s.length} songs, ${n((x) => x.lines.length)} lines, ` +
+    `${n((x) => x.sources.length)} videos, ${n((x) => x.lines.concat(x.slokas).filter((l) => l.mean).length)} verses with a meaning.`;
+  $("song").innerHTML = s.map((x, i) => `<option value="${i}">${x.no} · ${esc(x.title)}${x.lines.length ? "" : " (no lyrics yet)"}</option>`).join("");
+  $("out").hidden = false; show();
+}
+function show() {
+  const song = DATA.songs[+$("song").value], sc = $("script").value;
+  $("videos").innerHTML = song.sources.map((v) => `<li>${esc(v.label)} — <a href="https://www.youtube.com/watch?v=${esc(v.id)}&t=${v.start}" target="_blank" rel="noopener">${esc(v.id)}</a>` +
+    ` from ${mmss(v.start)}${v.end != null ? " to " + mmss(v.end) : " to the end"}</li>`).join("") || "<li>none</li>";
+  $("lyrics").innerHTML = song.lines.map((l) => `<div class="ln"><span class="v">${esc(l.v)}</span>${esc(l[sc] || l.te)}</div>`).join("") || "<p class='hint'>No lyrics for this song yet.</p>";
+}
+$("load").onclick = load; $("song").onchange = show; $("script").onchange = show;
+try { const saved = localStorage.getItem("live-pub"); if (saved) { $("pub").value = saved; load(); } } catch (e) {}
+</script>
+</body>
+</html>
