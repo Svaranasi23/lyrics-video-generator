@@ -49,6 +49,7 @@
     header h1, #addSongBtn, header .seg, header .grow { display:none; }
     header select { flex:1; min-width:0; }
     .phone-only { display:inline-block; }
+    #phoneBar { display:flex; align-items:center; gap:8px; }
     main { flex:1; min-height:0; display:flex; flex-direction:column; gap:0; padding:0; }
     .left { display:block; flex:none; }
     .video { border-radius:0; }
@@ -141,6 +142,7 @@
     <div class="card now" id="now"></div>
 
     <div class="tools" id="tools">
+    <div class="card phone-only" id="phoneBar"><b><span class="te">గీత గోవిందం</span> · Sing Along</b><span class="grow"></span><button id="addSongBtn2">+ Your own song</button></div>
     <div class="card sync-bar" id="syncBar">
       <span><span class="rec-dot"></span><b>Setting timing</b></span>
       <button class="primary bigbtn" id="markBtn">Next line <kbd>Space</kbd></button>
@@ -164,7 +166,7 @@
     </div>
 
     <details class="card" id="settings">
-      <summary>Display &amp; timing tools</summary>
+      <summary>Display settings</summary>
       <div class="row" style="margin-top:12px">
         <span id="scriptRow"><span class="label">Script</span></span>
         <div class="seg" id="scriptSeg">
@@ -604,6 +606,7 @@ $("songOk").onclick = () => {
   $("songDlg").close(); renderSelectors(); selectSong(key, 0);
 };
 $("addSongBtn").onclick = () => openSongDialog(null);
+$("addSongBtn2").onclick = () => { document.body.classList.remove("tools-open"); openSongDialog(null); };
 
 function syncPrefButtons() {
   [...$("scriptSeg").children].forEach((b) => b.classList.toggle("on", b.dataset.script === prefs.script)); $("scriptSel").value = prefs.script;
@@ -681,6 +684,7 @@ async function loadData() {
   // merge user-added renditions into built-in songs
   if (DATA) DATA.songs.forEach((s) => { const extra = store.get(`gg-extra-src:gg${s.no}`, []); s.sources.push(...extra); });
   renderSelectors(); syncPrefButtons();
+  if (matchMedia("(max-width: 860px)").matches) $("settings").open = true;  // on a phone the gear panel shows the settings straight away
   const mock = location.hash === "#mock" || location.search.includes("mock");
   if (location.protocol === "file:" && !mock) $("protoWarn").hidden = false;
   if (mock) { S.player = new ClockPlayer(); $("player").innerHTML = `<div style="color:#fff;padding:20px">Test clock (no video)</div>`; }
