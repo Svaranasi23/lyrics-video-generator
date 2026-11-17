@@ -17,6 +17,16 @@ window.COLLECTIONS = [
     pubId: "2PACX-1vQlQR-cUihBNeOPL8TshhHIN3TyCqTjd43hEY8LmzDnIb7KG3GNHMNIZrPpLm6jqrEdf_XN39HuEze6",
     gids: { songs: 1233158892, verses: 1471833179, lines: 924686161, videos: 1420763163 },
   },
+  {
+    slug: "traditional-songs",
+    title: "Traditional Songs",
+    native: "సాంప్రదాయ గీతాలు",
+    names: { te: "సాంప్రదాయ గీతాలు", en: "Traditional Songs" },
+    part: "",
+    blurb: "Aarti, mangalam and other traditional songs",
+    pubId: "2PACX-1vTfg4reBO2qx4W88TLbMnK8Ve9h08ya3hEkNJHRU1BBx1qXImEcJelCgCNnluMJxlmynYZr6GIBqJuq",
+    gids: { songs: 1233158892, lines: 924686161, videos: 1420763163 },  // no Verses tab: not needed for these songs
+  },
   // Spare entry for the next collection: copy it, fill it in, and remove the two slashes at the start of each line.
   // {
   //   slug: "kirtanas",

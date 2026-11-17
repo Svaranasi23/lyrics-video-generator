@@ -1,6 +1,6 @@
 // Unit tests for docs/live_data.js. Run: node tests/test_live_data.js
 const assert = require("assert");
-const { parseCSV, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS } = require("../../docs/live_data.js");
+const { parseCSV, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS, scriptsIn } = require("../../docs/live_data.js");
 
 let fails = 0;
 function check(name, fn) {
@@ -55,6 +55,42 @@ check("added videos: rows in Videos-tab column order", () => assert.deepStrictEq
 check("added videos: songs with none give no rows; TSV pastes as columns", () => {
   assert.deepStrictEqual(addedVideoRows([{ no: 1 }], () => undefined), []);
   assert.strictEqual(toTSV(rows), "2\tTab here newline\thttps://www.youtube.com/watch?v=abc\t90\t\n5\tPractice\thttps://www.youtube.com/watch?v=zzz\t0\t200");
+});
+
+// A looser sheet, like "Traditional songs": no Verses tab, capitalised headers, only Telugu, sections labelled P1/C1.
+const L2 = {
+  songs: "Song_No,Title,Raga\n1,Aarti,\n2,Mangalam,Sindhu Bhairavi\n",
+  verses: "",
+  lines: 'song_no,verse,line_no,DEVANAGARI,Telugu,transliteration,telugu_phonetic\n' +
+    '1,,P1,,"line a\nline b",,\n1,,C1,,"line c",,\n2,,c1,,"line d\nline e\nline f",,\n1,,P1,,"line g",,\n',
+  videos: "song_no,label,youtube_url,start_sec,end_sec\n1,Short,https://youtube.com/shorts/ABC123?si=xyz,0,\n2,Embed,https://www.youtube.com/embed/EMB456,,\n",
+};
+const d2 = buildData(L2, "T");
+check("loose sheet: capitalised headers and a missing Verses tab work", () => {
+  assert.strictEqual(d2.songs.length, 2);
+  assert.deepStrictEqual(d2.songs[0].lines.map((l) => l.te), ["line a\nline b", "line c", "line g"]);
+});
+check("loose sheet: P1/C1 labels (upper-cased), cell line breaks kept, sheet order", () => {
+  assert.deepStrictEqual(d2.songs[0].lines.map((l) => l.v), ["P1", "C1", "P1"]);
+  assert.strictEqual(d2.songs[1].lines[0].te, "line d\nline e\nline f");
+  assert.strictEqual(d2.songs[1].lines[0].v, "C1");
+});
+check("loose sheet: named verse without a Verses tab still groups", () => {
+  const d = buildData({ songs: "song_no,title\n1,A\n", verses: undefined, lines: "song_no,verse,line_no,telugu\n1,V1,2,two\n1,V1,1,one\n", videos: "" }, "T");
+  assert.deepStrictEqual(d.songs[0].lines.map((l) => l.te), ["one", "two"]);
+});
+check("loose sheet: missing videos tab is fine; line for an unknown song errors", () => {
+  assert.deepStrictEqual(buildData({ songs: "song_no,title\n1,A\n", lines: "", verses: "", videos: undefined }, "T").songs[0].sources, []);
+  assert.throws(() => buildData({ songs: "song_no,title\n1,A\n", lines: "song_no,telugu\n9,x\n" }, "T"), (e) => e.message.includes("song 9"));
+});
+check("youtube: Shorts and embed links", () => {
+  assert.deepStrictEqual(d2.songs[0].sources.map((x) => x.id), ["ABC123"]);
+  assert.deepStrictEqual(d2.songs[1].sources.map((x) => x.id), ["EMB456"]);
+  assert.strictEqual(ytId("https://www.youtube.com/live/LIVE789").id, "LIVE789");
+});
+check("scripts: only the ones with text are reported", () => {
+  assert.deepStrictEqual(scriptsIn(d2.songs), { te: true, dev: false, en: false, tes: false });
+  assert.deepStrictEqual(scriptsIn(d.songs), { te: true, dev: true, en: true, tes: true });
 });
 
 const COLS = [{ slug: "gita-govindam", title: "G" }, { slug: "kirtanas", title: "K" }];

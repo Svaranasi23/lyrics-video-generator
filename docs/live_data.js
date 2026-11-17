@@ -33,19 +33,21 @@
   function ytId(url) {
     if (!url) return null;
     let u; try { u = new URL(url); } catch (e) { return null; }
-    const host = u.hostname.toLowerCase(); let vid = null;
-    if (host.includes("youtu.be")) vid = u.pathname.replace(/^\//, "").split("/")[0];
-    else if (host.includes("youtube.com") && !host.includes("music.")) vid = u.searchParams.get("v");
+    const host = u.hostname.toLowerCase(), parts = u.pathname.split("/").filter(Boolean); let vid = null;
+    if (host.includes("youtu.be")) vid = parts[0];
+    else if (host.includes("youtube.com") && !host.includes("music."))
+      vid = u.searchParams.get("v") || (["shorts", "embed", "live", "v"].includes(parts[0]) ? parts[1] : null);
     if (!vid) return null;
     const t = u.searchParams.get("t") || "0";
     return { id: vid, start: parseInt(t.replace(/\D/g, "") || "0", 10) };
   }
 
   /** CSV text of one tab -> array of {header: value, _row}; fully blank rows skipped. */
+  const norm = (h) => String(h == null ? "" : h).trim().toLowerCase().replace(/[\s-]+/g, "_");
   function rowsOf(csv) {
-    const t = parseCSV(csv);
+    const t = parseCSV(csv || "");
     if (!t.length) return [];
-    const header = t[0].map(cell);
+    const header = t[0].map(norm);
     const out = [];
     t.slice(1).forEach((r, i) => {
       const d = { _row: i + 2 };
@@ -79,18 +81,31 @@
       for (const k of ["te", "en"]) { const v = cell(r["meaning_" + k]); if (v) mean[k] = v; }
       verses.set(key, { no, verse, kind, mean, lines: [] });
     }
+    const strict = verses.size > 0;  // a Verses tab with rows means every line's verse must be listed there
     for (const r of rowsOf(tabs.lines)) {
-      const no = toInt(r.song_no, `Lines row ${r._row} song_no`), verse = cell(r.verse), key = no + "|" + verse;
-      if (!verses.has(key)) throw new Error(`Lines row ${r._row}: verse ${verse} of song ${no} is not in the Verses tab`);
+      const no = toInt(r.song_no, `Lines row ${r._row} song_no`), verse = cell(r.verse);
+      if (!songs.has(no)) throw new Error(`Lines row ${r._row}: song ${no} is not in the Songs tab`);
+      const lineNo = cell(r.line_no), numeric = /^\d+(\.\d+)?$/.test(lineNo);
+      let key;
+      if (verse) {
+        key = no + "|" + verse;
+        if (!verses.has(key)) {
+          if (strict) throw new Error(`Lines row ${r._row}: verse ${verse} of song ${no} is not in the Verses tab`);
+          verses.set(key, { no, verse, kind: "gitam", mean: {}, lines: [] });
+        }
+      } else {  // no verse: each row is its own section, labelled by line_no when that is text (P1, C1...)
+        key = no + "|#row" + r._row;
+        verses.set(key, { no, verse: "", label: lineNo && !numeric ? lineNo.toUpperCase() : "", kind: "gitam", mean: {}, lines: [] });
+      }
+      // A cell may hold several lines (Enter inside the cell); the page shows them as typed.
       const line = { dev: cell(r.devanagari), te: cell(r.telugu), en: cell(r.transliteration), tes: cell(r.telugu_phonetic) };
-      if (!line.te) continue;  // Telugu is required; a row without it is ignored
-      const order = cell(r.line_no) ? toInt(r.line_no, `Lines row ${r._row} line_no`) : r._row;
-      verses.get(key).lines.push({ order, line });
+      const order = lineNo && numeric ? toInt(lineNo, `Lines row ${r._row} line_no`) : r._row;
+      if (line.te) verses.get(key).lines.push({ order, line });  // Telugu is required; a row without it is ignored
     }
     for (const info of verses.values()) {
       const ls = info.lines.map((x, i) => ({ ...x, i })).sort((a, b) => a.order - b.order || a.i - b.i).map((x) => x.line);
       ls.forEach((l, i) => {
-        l.v = verseLabel(info.verse, info.kind);
+        l.v = info.label !== undefined ? info.label : verseLabel(info.verse, info.kind);
         if (i === 0 && Object.keys(info.mean).length) l.mean = info.mean;
       });
       songs.get(info.no)[info.kind === "sloka" ? "slokas" : "lines"].push(...ls);
@@ -122,6 +137,13 @@
   /** Prefix for a collection's saved data. The first collection keeps the original (empty) prefix. */
   function storageNS(list, c) { return !c || (list.length && c.slug === list[0].slug) ? "" : c.slug + ":"; }
 
-  const api = { parseCSV, rowsOf, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS };
+  /** Which scripts have any text, so the page can hide the ones a collection doesn't have. */
+  function scriptsIn(songs) {
+    const has = { te: false, dev: false, en: false, tes: false };
+    for (const s of songs) for (const l of s.lines.concat(s.slokas)) for (const k of Object.keys(has)) if (l[k]) has[k] = true;
+    return has;
+  }
+
+  const api = { parseCSV, rowsOf, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS, scriptsIn };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.LiveData = api;
 })(typeof window !== "undefined" ? window : globalThis);
