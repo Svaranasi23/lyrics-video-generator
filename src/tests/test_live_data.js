@@ -1,6 +1,6 @@
 // Unit tests for live/live_data.js. Run: node tests/test_live_data.js
 const assert = require("assert");
-const { parseCSV, buildData, ytId, addedVideoRows, toTSV } = require("../live/live_data.js");
+const { parseCSV, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS } = require("../live/live_data.js");
 
 let fails = 0;
 function check(name, fn) {
@@ -55,6 +55,19 @@ check("added videos: rows in Videos-tab column order", () => assert.deepStrictEq
 check("added videos: songs with none give no rows; TSV pastes as columns", () => {
   assert.deepStrictEqual(addedVideoRows([{ no: 1 }], () => undefined), []);
   assert.strictEqual(toTSV(rows), "2\tTab here newline\thttps://www.youtube.com/watch?v=abc\t90\t\n5\tPractice\thttps://www.youtube.com/watch?v=zzz\t0\t200");
+});
+
+const COLS = [{ slug: "gita-govindam", title: "G" }, { slug: "kirtanas", title: "K" }];
+check("collections: pick by slug, default first, unknown falls back", () => {
+  assert.strictEqual(pickCollection(COLS, "kirtanas").title, "K");
+  assert.strictEqual(pickCollection(COLS, null).title, "G");
+  assert.strictEqual(pickCollection(COLS, "nope").title, "G");
+  assert.strictEqual(pickCollection([], "x"), null);
+});
+check("collections: first keeps old storage keys, others get a prefix", () => {
+  assert.strictEqual(storageNS(COLS, COLS[0]), "");
+  assert.strictEqual(storageNS(COLS, COLS[1]), "kirtanas:");
+  assert.strictEqual(storageNS([], null), "");
 });
 
 process.exit(fails ? 1 : 0);

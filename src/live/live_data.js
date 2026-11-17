@@ -117,6 +117,11 @@
   }
   const toTSV = (rows) => rows.map((r) => r.join("\t")).join("\n");
 
-  const api = { parseCSV, rowsOf, buildData, ytId, addedVideoRows, toTSV };
+  /** The collection a page shows: the one named by slug, else the first. */
+  function pickCollection(list, slug) { return list.find((c) => c.slug === slug) || list[0] || null; }
+  /** Prefix for a collection's saved data. The first collection keeps the original (empty) prefix. */
+  function storageNS(list, c) { return !c || (list.length && c.slug === list[0].slug) ? "" : c.slug + ":"; }
+
+  const api = { parseCSV, rowsOf, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.LiveData = api;
 })(typeof window !== "undefined" ? window : globalThis);
