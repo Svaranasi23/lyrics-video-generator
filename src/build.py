@@ -1,15 +1,32 @@
-"""Build the Gita Govindam sing-along page from the spreadsheet export.
+"""Build the sing-along page from the standard template workbook.
 
-Usage: python3 -I build.py data/gg.xlsx template.html dist/index.html
+Usage: python build.py data/gg-template.xlsx template.html dist/index.html [collection title]
+
+The workbook has tabs Songs, Verses, Lines, Videos (see its "Read me" tab).
+Meanings are optional per verse: a blank cell publishes nothing.
 """
 import json
+import os
 import re
 import sys
 from urllib.parse import parse_qs, urlparse
 
 import openpyxl
 
-XLSX, TEMPLATE, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
+DEFAULT_TITLE = "Gita Govindam — Ashtapadi"
+
+
+def cell(v):
+    """Cell text, or '' for blank (None, '', '-')."""
+    s = "" if v is None else str(v).strip()
+    return "" if s == "-" else s
+
+
+def to_int(v, what):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        raise ValueError(f"{what}: expected a number, got {v!r}")
 
 
 def yt_id(url):
@@ -17,8 +34,7 @@ def yt_id(url):
     if not url:
         return None
     u = urlparse(url)
-    host = u.netloc.lower()
-    vid = None
+    host, vid = u.netloc.lower(), None
     if "youtu.be" in host:
         vid = u.path.lstrip("/").split("/")[0]
     elif "youtube.com" in host and "music." not in host:
@@ -26,139 +42,101 @@ def yt_id(url):
     if not vid:
         return None
     t = parse_qs(u.query).get("t", ["0"])[0]
-    start = int(re.sub(r"\D", "", t) or 0)
-    return vid, start
+    return vid, int(re.sub(r"\D", "", t) or 0)
 
 
-def clean_segment(s):
-    s = s.replace("!", " ")
-    s = re.sub(r"[0-9०-९]+\s*$", "", s.strip())  # trailing verse number
-    s = re.sub(r"\s+", " ", s).strip(" -")
-    return s.strip()
+def rows(ws):
+    """Data rows as dicts keyed by the header row; skips fully blank rows."""
+    it = ws.iter_rows(values_only=True)
+    header = [cell(h) for h in next(it)]
+    for n, r in enumerate(it, 2):
+        d = {h: r[i] if i < len(r) else None for i, h in enumerate(header) if h}
+        if any(cell(v) for v in d.values()):
+            d["_row"] = n
+            yield d
 
 
-REFRAIN_SPLIT = {  # song 1 rows have no '~'; split before the Keshava refrain
-    "te": "కేశవ", "dev": "केशव", "en": "keshava", "tes": "కేశవ",
-}
+def verse_label(verse, kind):
+    """What the page shows beside a verse: a number for gitam verses, 'Sarga 1.1' for slokas."""
+    m = re.fullmatch(r"[GS]?(\d+(?:\.\d+)?)", verse)
+    num = m.group(1) if m else verse
+    if kind == "sloka":
+        return f"Sarga {num}"
+    return int(num) if num.isdigit() else num
 
 
-def split_lines(cols, song_no):
-    parts = {k: str(v or "").split("~") for k, v in cols.items()}
-    n = len(parts["te"])
-    if any(len(p) != n for p in parts.values()):
-        raise ValueError(f"line count mismatch in song {song_no}")
-    if n == 1 and song_no == 1:
-        for k, p in parts.items():
-            s = p[0]
-            idx = s.find(REFRAIN_SPLIT[k])
-            parts[k] = [s[:idx], s[idx:]] if idx > 0 else [s]
-        n = len(parts["te"])
-    lines = []
-    for i in range(n):
-        line = {k: clean_segment(parts[k][i]) for k in parts}
-        if line["te"]:
-            lines.append(line)
-    return lines
+def build_data(path, title=DEFAULT_TITLE):
+    wb = openpyxl.load_workbook(path, data_only=True)
+    for tab in ("Songs", "Verses", "Lines", "Videos"):
+        if tab not in wb.sheetnames:
+            raise ValueError(f"missing tab: {tab}")
+
+    songs = {}
+    for r in rows(wb["Songs"]):
+        no = to_int(r.get("song_no"), f"Songs row {r['_row']} song_no")
+        songs[no] = {"no": no, "title": cell(r.get("title")), "raga": cell(r.get("raga")),
+                     "sources": [], "slokas": [], "lines": []}
+
+    verses = {}  # (song, verse) -> info, in sheet order
+    for r in rows(wb["Verses"]):
+        no = to_int(r.get("song_no"), f"Verses row {r['_row']} song_no")
+        if no not in songs:
+            raise ValueError(f"Verses row {r['_row']}: song {no} is not in the Songs tab")
+        verse, kind = cell(r.get("verse")), (cell(r.get("kind")) or "gitam").lower()
+        if (no, verse) in verses:
+            raise ValueError(f"Verses row {r['_row']}: duplicate verse {verse} in song {no}")
+        mean = {k: cell(r.get(f"meaning_{k}")) for k in ("te", "en")}
+        verses[(no, verse)] = {"kind": kind, "mean": {k: v for k, v in mean.items() if v}, "lines": []}
+
+    for r in rows(wb["Lines"]):
+        no = to_int(r.get("song_no"), f"Lines row {r['_row']} song_no")
+        verse = cell(r.get("verse"))
+        if (no, verse) not in verses:
+            raise ValueError(f"Lines row {r['_row']}: verse {verse} of song {no} is not in the Verses tab")
+        line = {"dev": cell(r.get("devanagari")), "te": cell(r.get("telugu")),
+                "en": cell(r.get("transliteration")), "tes": cell(r.get("telugu_phonetic"))}
+        if not line["te"]:
+            continue  # Telugu is required; a row without it is ignored
+        order = to_int(r.get("line_no"), f"Lines row {r['_row']} line_no") if cell(r.get("line_no")) else r["_row"]
+        verses[(no, verse)]["lines"].append((order, line))
+
+    for (no, verse), info in verses.items():
+        ls = [l for _, l in sorted(info["lines"], key=lambda x: x[0])]
+        for i, l in enumerate(ls):
+            l["v"] = verse_label(verse, info["kind"])
+            if i == 0 and info["mean"]:
+                l["mean"] = info["mean"]  # meaning rides on the first line of its verse
+        songs[no]["slokas" if info["kind"] == "sloka" else "lines"].extend(ls)
+
+    for r in rows(wb["Videos"]):
+        no = to_int(r.get("song_no"), f"Videos row {r['_row']} song_no")
+        if no not in songs:
+            raise ValueError(f"Videos row {r['_row']}: song {no} is not in the Songs tab")
+        y = yt_id(cell(r.get("youtube_url")))
+        if not y:
+            continue  # blank or unrecognised link
+        start = to_int(r["start_sec"], "start_sec") if cell(r.get("start_sec")) else y[1]
+        end = to_int(r["end_sec"], "end_sec") if cell(r.get("end_sec")) else None
+        songs[no]["sources"].append({"label": cell(r.get("label")) or "Video", "id": y[0],
+                                     "start": start, "end": end})
+
+    return {"collection": title, "songs": [songs[k] for k in sorted(songs)]}
 
 
-wb = openpyxl.load_workbook(XLSX)
-raw = wb["Geethagovindam_raw"]
-index = wb["Index"]
+def render(data, template_path, out_path):
+    html = open(template_path, encoding="utf-8").read()
+    payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    html = html.replace("/*__DATA__*/null", payload)
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    open(out_path, "w", encoding="utf-8").write(html)
 
-# --- lyrics: Gitam rows grouped by song; preceding Sarga slokas kept as optional intro
-songs_lyrics, pending_slokas = {}, []
-for r in raw.iter_rows(min_row=2):
-    label = str(r[1].value or "").strip()
-    cols = {"dev": r[3].value, "te": r[4].value, "en": r[5].value, "tes": r[6].value}
-    m = re.match(r"Gitam (\d+)\.(\d+)", label)
-    if m:
-        song, verse = int(m.group(1)), int(m.group(2))
-        if song not in songs_lyrics:
-            songs_lyrics[song] = {"slokas": pending_slokas, "lines": []}
-            pending_slokas = []
-        entry = songs_lyrics[song]
-        for ln in split_lines(cols, song):
-            ln["v"] = verse
-            entry["lines"].append(ln)
-    elif label.startswith("Sarga"):
-        for ln in split_lines(cols, 0):
-            ln["v"] = label
-            pending_slokas.append(ln)
-    elif label.startswith(("Dhyanam", "Appendix")):  # invocations, not a song intro
-        pending_slokas = []
 
-COMPILATION = "MTCehEEK8tA"
-
-# --- index: titles, raga, video sources
-songs = []
-chapter_starts = {}
-for r in index.iter_rows(min_row=2, max_row=40):
-    if r[0].value is None:
-        continue
-    no = int(float(r[0].value))
-    i_cell = r[8]
-    yt = yt_id(i_cell.hyperlink.target) if i_cell.hyperlink else None
-    if yt:
-        chapter_starts[no] = yt[1]
-
-ordered = sorted(chapter_starts)
-for r in index.iter_rows(min_row=2, max_row=40):
-    if r[0].value is None:
-        continue
-    no = int(float(r[0].value))
-    sources = []
-    seen = set()
-
-    def add(label, vid, start=0, end=None):
-        key = (vid, start)
-        if key in seen:
-            return
-        seen.add(key)
-        sources.append({"label": label, "id": vid, "start": start, "end": end})
-
-    # chapter in the Saindhavi compilation
-    comp = None
-    if no in chapter_starts:
-        nxt = [s for s in ordered if s > no]
-        end = chapter_starts[nxt[0]] if nxt else None
-        comp = (chapter_starts[no], end)
-
-    d = r[3]
-    if d.hyperlink:
-        y = yt_id(d.hyperlink.target)
-        if y and y[0] == COMPILATION and comp:
-            add("Saindhavi (Final pick)", COMPILATION, comp[0], comp[1])
-        elif y:
-            add("Final pick", y[0], y[1])
-    if comp:
-        add("Saindhavi (compilation)", COMPILATION, comp[0], comp[1])
-    for c in (r[4], r[5], r[6]):
-        if c.hyperlink:
-            y = yt_id(c.hyperlink.target)
-            if y and y[0] != COMPILATION:
-                add(re.sub(r"\s*\(YouTube[^)]*\)", "", str(c.value)), y[0], y[1])
-
-    lyr = songs_lyrics.get(no, {"slokas": [], "lines": []})
-    songs.append({
-        "no": no,
-        "title": str(r[1].value).strip(),
-        "raga": str(r[2].value or "").strip(),
-        "sources": sources,
-        "slokas": lyr["slokas"],
-        "lines": lyr["lines"],
-    })
-
-data = {"collection": "Gita Govindam — Ashtapadi", "songs": songs}
-html = open(TEMPLATE, encoding="utf-8").read()
-payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
-html = html.replace("/*__DATA__*/null", payload)
-import os
-os.makedirs(os.path.dirname(OUT), exist_ok=True)
-open(OUT, "w", encoding="utf-8").write(html)
-
-missing = [s["no"] for s in songs if not s["lines"]]
-print(f"songs={len(songs)} lines={sum(len(s['lines']) for s in songs)} "
-      f"missing_lyrics={missing} no_video={[s['no'] for s in songs if not s['sources']]}")
-for s in songs[:4] + songs[-1:]:
-    print(s["no"], s["title"], [(x["label"], x["id"], x["start"], x["end"]) for x in s["sources"]],
-          "slokas", len(s["slokas"]), "lines", len(s["lines"]))
+if __name__ == "__main__":
+    xlsx, template, out = sys.argv[1:4]
+    data = build_data(xlsx, sys.argv[4] if len(sys.argv) > 4 else DEFAULT_TITLE)
+    render(data, template, out)
+    s = data["songs"]
+    print(f"songs={len(s)} lines={sum(len(x['lines']) for x in s)} "
+          f"meanings={sum(1 for x in s for l in x['lines'] + x['slokas'] if 'mean' in l)} "
+          f"missing_lyrics={[x['no'] for x in s if not x['lines']]} "
+          f"no_video={[x['no'] for x in s if not x['sources']]}")
