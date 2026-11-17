@@ -118,7 +118,7 @@
   .info { padding:0 4px; margin-top:2px; border:0; background:none; color:var(--accent); cursor:pointer; font-size:14px; }
   #sheetRow { display:none; }
   /* Lyrics only: the video (and its audio) is switched off entirely */
-  body.lyrics-only .video, body.lyrics-only #srcSel, body.lyrics-only #copyVideosBtn, body.lyrics-only #protoWarn,
+  body.lyrics-only #videoMsg, body.lyrics-only .video, body.lyrics-only #srcSel, body.lyrics-only #copyVideosBtn, body.lyrics-only #protoWarn,
   body.lyrics-only .play-only, body.lyrics-only #sheetRow { display:none !important; }
   body.lyrics-only main { grid-template-columns:1fr; max-width:900px; }
   body.lyrics-only .left { position:static; }
@@ -156,6 +156,7 @@
     <div id="protoWarn" class="banner" hidden>
       This page was opened as a local file, which YouTube refuses to play. Open it through a web address instead (see the README).
     </div>
+    <div id="videoMsg" class="banner" hidden></div>
     <div id="noTiming" class="banner" hidden></div>
 
     <div class="card now" id="now"></div>
@@ -351,7 +352,9 @@ class YouTubePlayer {
     this.p = null; this.pending = null;
     window.onYouTubeIframeAPIReady = () => {
       this.p = new YT.Player("player", { playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-        events: { onReady: () => { if (this.pending) this.load(...this.pending); onReady(); } } });
+        events: { onReady: () => { if (this.pending) this.load(...this.pending); onReady(); },
+          onError: (e) => window.onVideoError && window.onVideoError(e.data),            // YouTube says why a video can't play
+          onStateChange: (e) => { if (e.data === 1 && window.onVideoOk) window.onVideoOk(); } } });
     };
     const tag = document.createElement("script"); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
   }
@@ -487,6 +490,7 @@ function selectSong(key, srcIndex) {
   S.src = S.song.sources[srcIndex != null ? srcIndex : store.get(`gg-src:${S.song.key}`, 0)] || S.song.sources[0] || null;
   $("songSel").value = S.song.key; renderSources();
   buildLines(); loadTiming(); S.loop = false; $("loopBtn").classList.remove("on");
+  $("videoMsg").hidden = true;
   if (S.src && S.player) S.player.load(S.src.id, S.src.start || 0);
   renderLyrics(); renderNow(null);
   store.set("gg-last-song", { key: S.song.key, label: S.song.title });
@@ -646,6 +650,15 @@ $("songOk").onclick = () => {
   $("songDlg").close(); renderSelectors(); selectSong(key, 0);
 };
 $("addSongBtn").onclick = () => openSongDialog(null);
+window.onVideoOk = () => { $("videoMsg").hidden = true; };
+window.onVideoError = (code) => {  // show the reason and a way to watch it on YouTube itself
+  const v = S.src, link = v ? `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}${v.start ? "&t=" + v.start : ""}` : "https://www.youtube.com/";
+  const why = { 2: "The video link isn't valid.", 5: "This browser couldn't play the video.", 100: "The video was removed or is private.",
+    101: "The owner doesn't allow this video to be played on other sites.", 150: "The owner doesn't allow this video to be played on other sites.",
+    153: "YouTube couldn't verify this page to play the video." }[code] || "The video couldn't be played.";
+  $("videoMsg").innerHTML = `${escapeHtml(why)} <a href="${link}" target="_blank" rel="noopener">Watch it on YouTube ↗</a> <span class="hint">(error ${escapeHtml(code)})</span>`;
+  $("videoMsg").hidden = false;
+};
 function applyLyricsOnly() {
   const on = prefs.lyricsOnly === true; document.body.classList.toggle("lyrics-only", on);
   ["lyricsOnlyBtn", "lyricsOnlyBtn2"].forEach((id) => { const b = $(id); b.classList.toggle("on", on); b.textContent = on ? "Show video" : "Lyrics only";
