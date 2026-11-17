@@ -1,6 +1,6 @@
-// Unit tests for live/live_data.js. Run: node tests/test_live_data.js
+// Unit tests for docs/live_data.js. Run: node tests/test_live_data.js
 const assert = require("assert");
-const { parseCSV, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS } = require("../live/live_data.js");
+const { parseCSV, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS } = require("../../docs/live_data.js");
 
 let fails = 0;
 function check(name, fn) {

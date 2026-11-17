@@ -1,4 +1,4 @@
-"""Check that the browser reader (live/live_data.js) builds exactly what build.py builds.
+"""Check that the browser reader (docs/live_data.js) builds exactly what build.py builds.
 
 Usage: ../.venv/bin/python tests/parity_live.py data/gg-template.xlsx
 Exports each tab to CSV (like Google's "publish to web"), runs live_data.js in Node, compares to build.py.
@@ -32,7 +32,7 @@ tabs = {k: tab_csv(v) for k, v in {"songs": "Songs", "verses": "Verses", "lines"
 js = ("const {buildData}=require(process.argv[1]);"
       "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>"
       "process.stdout.write(JSON.stringify(buildData(JSON.parse(s),'T'))));")
-res = subprocess.run(["node", "-e", js, os.path.join(HERE, "..", "live", "live_data.js")],
+res = subprocess.run(["node", "-e", js, os.path.join(HERE, "..", "..", "docs", "live_data.js")],
                      input=json.dumps(tabs), capture_output=True, text=True, check=True)
 live = json.loads(res.stdout)
 ref = build.build_data(path, "T")

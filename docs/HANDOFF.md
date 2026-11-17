@@ -1,3 +1,6 @@
+> **Superseded.** This is the original handoff. The page now reads a Google Sheet live and has no per-line timing;
+> see the README for how it works today.
+
 # Handoff — Gita Govindam Sing-Along (Lyric Video app)
 
 Written 2026-11-16 from a Claude chat session, for continuing in Claude Code.

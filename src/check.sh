@@ -8,4 +8,3 @@ PY=../.venv/bin/python
 node tests/test_live_data.js
 $PY tests/test_build.py
 [ -f data/gg-template.xlsx ] && $PY tests/parity_live.py data/gg-template.xlsx
-echo "(tests/test_page.py is out of date: it expects the old baked-in page)"

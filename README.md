@@ -1,34 +1,46 @@
-# Gita Govindam — Sing Along
+# Sing Along — Jayadeva Ashtapadi
 
-A single web page (`index.html`) that plays each Ashtapadi from YouTube and shows its
-lyrics in Telugu, Devanagari or English, highlighting each line as it is sung.
+A small web page that plays a song from YouTube and shows its lyrics underneath, in Telugu,
+Devanagari or English, with an optional meaning for each verse. It works on a phone (video on top,
+lyrics below) and on a computer. It is a learning tool.
 
-## Opening it
+The page reads its songs **live from a Google Sheet**, so changing a song, a video or a meaning
+never needs a rebuild or a push: edit the Sheet, then refresh the page.
 
-YouTube won't play inside a page opened by double-clicking the file, so open it
-through a web address:
+## Using the page
+- Pick a **song**, a **recording** and a **language** at the top.
+- A small **ⓘ** beside a verse opens its meaning. **All meanings** (in Display settings) opens them all.
+- **Other YouTube link…** in the recording list adds a recording on that device only. To keep it for good,
+  press **Copy added videos** and paste the rows under the last row of the Sheet's **Videos** tab.
+- On a phone, the **⚙** button opens the settings, the speed control and **+ Your own song**.
 
-- **On your Mac, from this folder:** open Terminal, then run
-  `cd "<this folder>"` and `python3 -m http.server 8000`,
-  and go to <http://localhost:8000> in your browser. Press Ctrl+C in Terminal to stop.
-- **Or from a hosted copy**, if one has been set up.
+## The Sheet (one per collection)
+Four tabs, described on the Sheet's own **Read me** tab:
 
-## Using it
+| Tab | One row is… |
+|---|---|
+| Songs | a song (number, title, raga) |
+| Verses | a verse of a song, with its optional meaning (Telugu / English) |
+| Lines | one line of lyrics, in each script |
+| Videos | one recording of a song, with optional start and end seconds |
 
-1. Pick a song and a rendition at the top. Songs 1 and 3 open your Final pick; the rest open their chapter
-   of the Saindhavi compilation and stop at the end of that chapter.
-2. **First time for a rendition:** choose **Set timing**, press play, and tap
-   **Space** (or *Next line*) the moment each line starts. If the singer repeats an
-   earlier line, click that line in the list. **B** marks a music break; **Backspace** undoes.
-3. Switch to **Sing along**. The current line is highlighted and shown large.
-   Click any line to jump there; *Loop line* repeats it; *0.75×* slows it down.
-4. **Display & timing tools:** script, word breaks (pada-chheda), transliteration,
-   opening slokas, text size, ±¼s timing nudge, copy/paste timing, download `.lrc`.
+The Sheet must be published: **File → Share → Publish to web → Entire document → Web page**.
 
-Timing is saved in the browser you used. Use **Copy timing** to back it up or move it
-to another device or browser (**Paste timing** there).
+## Collections and the home page
+`docs/collections.js` lists the collections shown on the home page. To add one: copy the template Sheet,
+publish it, copy the spare entry in `collections.js`, fill in its name, published ID and four tab IDs, and
+push that one file. Each collection keeps its own saved data in the browser.
 
-Songs 16, 21 and 22 have no lyrics in the spreadsheet yet. **+ Your own song** works
-for any YouTube video and any lyrics.
+## Publishing
+GitHub Pages serves the `docs/` folder of `main`
+(Settings → Pages → Deploy from branch → `main` → `/docs`). Only the page code is in Git; the lyrics live in
+the Sheet. Everything in a published Sheet is readable by anyone with its link.
 
-Built from `8.2 Geethagovindam Ashtapadi` (tabs *Geethagovindam_raw* and *Index*).
+## Running it locally
+```
+cd docs && python3 -m http.server 8001      # then open http://localhost:8001
+```
+
+## Tests
+`sh src/check.sh` (needs `python3 -m venv .venv && .venv/bin/pip install openpyxl`, and Node). It checks the Sheet
+reader and that it matches the old Python build, using `src/data/gg-template.xlsx` (an export of the Sheet; not in Git).
