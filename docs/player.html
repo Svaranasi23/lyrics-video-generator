@@ -50,6 +50,9 @@
     header select { flex:1; min-width:0; }
     .phone-only { display:inline-block; }
     #phoneBar { display:flex; align-items:center; gap:8px; }
+    #colBar { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--panel); border-bottom:1px solid var(--line); font-size:14px; }
+    #colBar button { padding:4px 10px; font-size:13px; }
+    header #colBtn { display:none; }
     header #copyVideosBtn, header #lyricsOnlyBtn { display:none; }
     #phoneBar { flex-wrap:wrap; }  /* on a phone the button lives in the gear panel */
     #sheetRow { display:flex; }
@@ -127,8 +130,10 @@
 </style>
 </head>
 <body>
+<div id="colBar" class="phone-only"><b><span class="te" id="colNative3"></span><span id="colTitle3"></span></b><span class="grow"></span><button class="colmenu" title="Switch to another collection">⇄ Collections</button></div>
 <header>
-  <h1><a href="./?home" class="colmenu" title="Switch collection" style="color:inherit;text-decoration:none"><span class="te" id="colNative" style="color:inherit"></span> <span id="colTitle">Sing Along</span><span> · Sing Along ▾</span></a></h1>
+  <h1><span class="te" id="colNative" style="color:inherit"></span><span id="colTitle"></span><span> · Sing Along</span></h1>
+  <button class="colmenu" id="colBtn" title="Switch to another collection">⇄ Collections</button>
   <select id="songSel" aria-label="Song"></select>
   <select id="srcSel" aria-label="Rendition"></select>
   <button id="lyricsOnlyBtn" title="Hide the video and audio and show only the lyrics">Lyrics only</button>
@@ -156,7 +161,7 @@
     <div class="card now" id="now"></div>
 
     <div class="tools" id="tools">
-    <div class="card phone-only" id="phoneBar"><a href="./?home" class="colmenu" title="Switch collection" style="color:inherit;text-decoration:none"><b><span class="te" id="colNative2"></span> <span id="colTitle2"></span> · Sing Along ▾</b></a><span class="grow"></span><button id="addSongBtn2">+ Your own song</button><button id="lyricsOnlyBtn2" title="Hide the video and audio and show only the lyrics">Lyrics only</button></div>
+    <div class="card phone-only" id="phoneBar"><b><span class="te" id="colNative2"></span><span id="colTitle2"></span> · Sing Along</b><span class="grow"></span><button id="addSongBtn2">+ Your own song</button><button id="lyricsOnlyBtn2" title="Hide the video and audio and show only the lyrics">Lyrics only</button></div>
     <div class="card sync-bar" id="syncBar">
       <span><span class="rec-dot"></span><b>Setting timing</b></span>
       <button class="primary bigbtn" id="markBtn">Next line <kbd>Space</kbd></button>
@@ -759,7 +764,7 @@ $("colClose").onclick = () => $("colDlg").close();
 function applyCollection() {  // the collection's name follows the language dropdown
   try { localStorage.setItem("gg-last-collection", COL ? COL.slug : ""); } catch {}
   const name = (CFG.names && CFG.names[prefs.script]) || (prefs.script === "te" && CFG.native) || CFG.title;
-  ["", "2"].forEach((n) => { const el = $("colNative" + n); el.textContent = name; el.className = scriptClass(prefs.script); $("colTitle" + n).textContent = ""; });
+  ["", "2", "3"].forEach((n) => { const el = $("colNative" + n); el.textContent = name; el.className = scriptClass(prefs.script); $("colTitle" + n).textContent = ""; });
   document.title = `${CFG.title} — Sing Along`;
 }
 
