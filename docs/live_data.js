@@ -139,6 +139,14 @@
   /** Prefix for a collection's saved data. The first collection keeps the original (empty) prefix. */
   function storageNS(list, c) { return !c || (list.length && c.slug === list[0].slug) ? "" : c.slug + ":"; }
 
+  /** The meaning to show for the chosen script: Telugu shows meaning_te, English (and Devanagari) show meaning_en.
+      If that one is blank the other is shown, so a meaning is never hidden. */
+  function pickMeaning(mean, script) {
+    const order = script === "te" ? ["te", "en"] : ["en", "te"];
+    const k = order.find((x) => mean && mean[x]);
+    return k ? { lang: k, text: mean[k] } : null;
+  }
+
   /** Which scripts have any text, so the page can hide the ones a collection doesn't have. */
   function scriptsIn(songs) {
     const has = { te: false, dev: false, en: false, tes: false };
@@ -146,6 +154,6 @@
     return has;
   }
 
-  const api = { parseCSV, rowsOf, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS, scriptsIn };
+  const api = { parseCSV, rowsOf, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS, scriptsIn, pickMeaning };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.LiveData = api;
 })(typeof window !== "undefined" ? window : globalThis);

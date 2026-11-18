@@ -258,8 +258,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="live_data.js?v=4"></script>
-<script src="collections.js?v=4"></script>
+<script src="live_data.js?v=5"></script>
+<script src="collections.js?v=5"></script>
 <script>
 let DATA = null;  // filled at start-up from the published Google Sheet
 const BAKED_TIMINGS = {};
@@ -412,9 +412,9 @@ function renderLyrics() {
   let html = "", lastKind = null, lastV = null, pend = null, lastKey = null, mi = 0;
   const hasMeanings = S.lines.some((l) => l.mean); S.openMeans = S.openMeans || new Set();
   $("meaningBtn").hidden = !hasMeanings;
-  const meanHtml = (x) => { const p = ["te", "en"].filter((k) => x.m[k]).map((k) => `<div class="${k}">${escapeHtml(x.m[k])}</div>`);
+  const meanHtml = (x) => { const pm = LiveData.pickMeaning(x.m, prefs.script);  // only the language chosen in the dropdown
     const open = prefs.meanings === true || S.openMeans.has(x.id);
-    return p.length ? `<div class="mean" id="mean-${x.id}"${open ? "" : " hidden"}>${p.join("")}</div>` : ""; };
+    return pm ? `<div class="mean" id="mean-${x.id}"${open ? "" : " hidden"}><div class="${pm.lang}">${escapeHtml(pm.text)}</div></div>` : ""; };
   if (!S.lines.length) html = `<p class="hint" style="padding:10px">The spreadsheet has no lyrics for this ashtapadi yet. Use <b>+ Your own song</b> to paste them, or add them to the sheet.</p>`;
   S.lines.forEach((l) => {
     const key = l.kind + "|" + l.v;

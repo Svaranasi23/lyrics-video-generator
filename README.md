@@ -20,11 +20,13 @@ Four tabs, described on the Sheet's own **Read me** tab:
 | Tab | One row is… |
 |---|---|
 | Songs | a song (number, title, raga) |
-| Verses | a verse of a song, with its optional meaning (Telugu / English) |
-| Lines | one line of lyrics, in each script |
+| Verses | a verse of a song (its kind: gitam or sloka). Optional: the page can build verses from Lines alone |
+| Lines | one line of lyrics, in each script; optional `meaning_te` / `meaning_en` on the verse's first line |
 | Videos | one recording of a song, with optional start and end seconds |
 
-A sheet that has no Verses tab can put `meaning_te` / `meaning_en` columns on the Lines tab instead (one meaning per row).
+Meanings live on the Lines tab (`meaning_te`, `meaning_en`), typed once on the verse's first line row. The page shows only
+the language chosen in the dropdown: Telugu shows `meaning_te`, English shows `meaning_en` (and falls back to the other
+if one is blank).
 
 The Sheet must be published: **File → Share → Publish to web → Entire document → Web page**.
 

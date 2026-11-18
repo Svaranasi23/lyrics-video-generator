@@ -1,6 +1,6 @@
 // Unit tests for docs/live_data.js. Run: node tests/test_live_data.js
 const assert = require("assert");
-const { parseCSV, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS, scriptsIn } = require("../../docs/live_data.js");
+const { parseCSV, buildData, ytId, addedVideoRows, toTSV, pickCollection, storageNS, scriptsIn, pickMeaning } = require("../../docs/live_data.js");
 
 let fails = 0;
 function check(name, fn) {
@@ -105,6 +105,17 @@ check("a Verses-tab meaning wins over a Lines-row meaning for the same verse", (
   const d = buildData({ songs: "song_no,title\n1,A\n", videos: "", verses: "song_no,verse,kind,meaning_en\n1,G1,gitam,from verses\n",
     lines: "song_no,verse,line_no,telugu,meaning_en\n1,G1,1,x,from lines\n" }, "T");
   assert.strictEqual(d.songs[0].lines[0].mean.en, "from verses");
+});
+
+check("meaning follows the script: Telugu -> te, English/Devanagari -> en, with a fallback", () => {
+  const both = { te: "తె", en: "En" };
+  assert.deepStrictEqual(pickMeaning(both, "te"), { lang: "te", text: "తె" });
+  assert.deepStrictEqual(pickMeaning(both, "en"), { lang: "en", text: "En" });
+  assert.deepStrictEqual(pickMeaning(both, "dev"), { lang: "en", text: "En" });
+  assert.deepStrictEqual(pickMeaning({ en: "En" }, "te"), { lang: "en", text: "En" });   // no Telugu: show English
+  assert.deepStrictEqual(pickMeaning({ te: "తె" }, "en"), { lang: "te", text: "తె" });   // no English: show Telugu
+  assert.strictEqual(pickMeaning({}, "te"), null);
+  assert.strictEqual(pickMeaning(undefined, "en"), null);
 });
 
 const COLS = [{ slug: "gita-govindam", title: "G" }, { slug: "kirtanas", title: "K" }];
