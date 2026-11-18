@@ -27,5 +27,7 @@ Learning tool. No audio downloads (YouTube ToS). Full context: [docs/HANDOFF.md]
 Page behaviour is checked in a browser with `?fixture=fixture` (reads local CSVs from `docs/fixture/`, not in Git).
 
 ## Next steps
+Latest state and open items: [docs/SESSION-NOTES.md](docs/SESSION-NOTES.md) (read this first).
+
 Publish (push, then Pages setting), try it on a phone, add lyrics for songs 16, 21 and 22 in the Sheet, then more
 collections. Auto-timing and MP4 export from the old plan are dropped for now.
