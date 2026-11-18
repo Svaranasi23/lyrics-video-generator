@@ -19,13 +19,33 @@ window.COLLECTIONS = [
   },
   {
     slug: "traditional-songs",
-    title: "Traditional Songs",
-    native: "సాంప్రదాయ గీతాలు",
-    names: { te: "సాంప్రదాయ గీతాలు", en: "Traditional Songs" },
+    title: "Lalitha Sangeetham",
+    native: "లలిత సంగీతం",
+    names: { te: "లలిత సంగీతం", en: "Lalitha Sangeetham" },
     part: "",
-    blurb: "Aarti, mangalam and other traditional songs",
+    blurb: "Aarti, mangalam and other light classical and traditional songs",
     pubId: "2PACX-1vTfg4reBO2qx4W88TLbMnK8Ve9h08ya3hEkNJHRU1BBx1qXImEcJelCgCNnluMJxlmynYZr6GIBqJuq",
     gids: { songs: 1233158892, lines: 924686161, videos: 1420763163 },  // no Verses tab: not needed for these songs
+  },
+  {
+    slug: "annamayya-songs",
+    title: "Annamayya Songs",
+    native: "అన్నమయ్య కీర్తనలు",
+    names: { te: "అన్నమయ్య కీర్తనలు", en: "Annamayya Songs" },
+    part: "",
+    blurb: "Keertanas of Tallapaka Annamacharya",
+    pubId: "2PACX-1vSw7C5nJptbrY5r9HBaXRgiGGF85BRLCbrahxCoH5_oE74wA-8L4dcXXwcfozrInZ0IhT8uutpgTjfZ",
+    gids: { songs: 1233158892, verses: 1471833179, lines: 924686161, videos: 1420763163 },
+  },
+  {
+    slug: "harathi-songs",
+    title: "Harathi Songs",
+    native: "హారతి పాటలు",
+    names: { te: "హారతి పాటలు", en: "Harathi Songs" },
+    part: "",
+    blurb: "Harathi songs",
+    pubId: "2PACX-1vQ7vbfj-CiVhBuqNCyqnGqrXFUXVP8Ph-_IZ7xxVV0YEj7ysGNC8Ahw1uqxklGAAz5nntgqEJsi8yZb",
+    gids: { songs: 1233158892, verses: 1471833179, lines: 924686161, videos: 1420763163 },
   },
   // Spare entry for the next collection: copy it, fill it in, and remove the two slashes at the start of each line.
   // {
