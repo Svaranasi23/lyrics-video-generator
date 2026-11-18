@@ -258,8 +258,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="live_data.js?v=5"></script>
-<script src="collections.js?v=5"></script>
+<script src="live_data.js?v=6"></script>
+<script src="collections.js?v=6"></script>
 <script>
 let DATA = null;  // filled at start-up from the published Google Sheet
 const BAKED_TIMINGS = {};
@@ -301,7 +301,7 @@ function parseYouTube(url) {
 function customSongs() { return store.get("gg-custom-songs", []); }
 function allSongs() {
   const built = (DATA ? DATA.songs : []).map((s) => ({ ...s, key: `gg${s.no}`,
-    label: `${s.no} · ${s.title}${s.raga ? " — " + s.raga : ""}${s.lines.length ? "" : "  (lyrics missing)"}` }));
+    label: `${s.no} · ${s.title}${s.writer ? " - " + s.writer : ""}${s.lines.length ? "" : "  (lyrics missing)"}` }));
   const mine = customSongs().map((s) => ({ ...s, label: `★ ${s.title}` }));
   return [...built, ...mine];
 }

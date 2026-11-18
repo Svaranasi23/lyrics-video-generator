@@ -69,7 +69,7 @@
     const songs = new Map();
     for (const r of rowsOf(tabs.songs)) {
       const no = toInt(r.song_no, `Songs row ${r._row} song_no`);
-      songs.set(no, { no, title: cell(r.title), raga: cell(r.raga), sources: [], slokas: [], lines: [] });
+      songs.set(no, { no, title: cell(r.title), raga: cell(r.raga), writer: cell(r.writer), sources: [], slokas: [], lines: [] });
     }
     const verses = new Map();  // "song|verse" -> info, insertion order = sheet order
     for (const r of rowsOf(tabs.verses)) {

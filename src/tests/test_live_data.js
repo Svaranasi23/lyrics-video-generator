@@ -20,7 +20,7 @@ check("youtube ids", () => {
 });
 
 const T = {
-  songs: "song_no,title,raga\n1,Alpha,Todi\n2,Beta,\n",
+  songs: "song_no,title,raga,writer\n1,Alpha,Todi,Jayadeva\n2,Beta,,\n",
   verses: "song_no,verse,kind,meaning_te,meaning_en\n1,S1.1,sloka,,\n1,G1,gitam,అర్థం,meaning one\n1,G2,gitam,-,\n",
   lines: "song_no,verse,line_no,devanagari,telugu,transliteration,telugu_phonetic\n" +
     "1,G1,2,d2,t2,e2,p2\n1,G1,1,d1,t1,e1,p1\n1,S1.1,1,ds,ts,es,ps\n1,G2,1,d3,t3,e3,p3\n1,G2,2,,,,\n",
@@ -40,7 +40,7 @@ check("videos: several, blank link skipped, start/end rules", () => {
   assert.deepStrictEqual(s1.sources.map((x) => x.label), ["Final", "Chapter"]);
   assert.strictEqual(s1.sources[1].start, 30); assert.strictEqual(s1.sources[1].end, 120); assert.strictEqual(s2.sources[0].start, 7);
 });
-check("song with no lines kept; raga blank", () => { assert.deepStrictEqual(s2.lines, []); assert.strictEqual(s2.raga, ""); });
+check("song with no lines kept; raga blank; writer read", () => { assert.deepStrictEqual(s2.lines, []); assert.strictEqual(s2.raga, ""); assert.strictEqual(s1.writer, "Jayadeva"); assert.strictEqual(s2.writer, ""); });
 
 const bad = (patch, text) => () => assert.throws(() => buildData({ ...T, ...patch }), (e) => e.message.includes(text));
 check("error: line for unknown verse", bad({ lines: "song_no,verse,line_no,telugu\n1,G9,1,x\n" }, "G9"));

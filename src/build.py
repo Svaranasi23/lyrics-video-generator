@@ -75,6 +75,7 @@ def build_data(path, title=DEFAULT_TITLE):
     for r in rows(wb["Songs"]):
         no = to_int(r.get("song_no"), f"Songs row {r['_row']} song_no")
         songs[no] = {"no": no, "title": cell(r.get("title")), "raga": cell(r.get("raga")),
+                     "writer": cell(r.get("writer")),
                      "sources": [], "slokas": [], "lines": []}
 
     verses = {}  # (song, verse) -> info, in sheet order
