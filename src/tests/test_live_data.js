@@ -93,6 +93,20 @@ check("scripts: only the ones with text are reported", () => {
   assert.deepStrictEqual(scriptsIn(d.songs), { te: true, dev: true, en: true, tes: true });
 });
 
+check("meanings can sit on a Lines row (sheets with no Verses tab)", () => {
+  const d = buildData({ songs: "song_no,title\n1,A\n", verses: "", videos: "",
+    lines: 'song_no,verse,line_no,telugu,meaning_te,meaning_en\n1,,P1,"a\nb",,Pallavi meaning\n1,,C1,c,అర్థం,\n1,,C2,d,,\n' }, "T");
+  const ls = d.songs[0].lines;
+  assert.deepStrictEqual(ls[0].mean, { en: "Pallavi meaning" });
+  assert.deepStrictEqual(ls[1].mean, { te: "అర్థం" });
+  assert.ok(!("mean" in ls[2]));
+});
+check("a Verses-tab meaning wins over a Lines-row meaning for the same verse", () => {
+  const d = buildData({ songs: "song_no,title\n1,A\n", videos: "", verses: "song_no,verse,kind,meaning_en\n1,G1,gitam,from verses\n",
+    lines: "song_no,verse,line_no,telugu,meaning_en\n1,G1,1,x,from lines\n" }, "T");
+  assert.strictEqual(d.songs[0].lines[0].mean.en, "from verses");
+});
+
 const COLS = [{ slug: "gita-govindam", title: "G" }, { slug: "kirtanas", title: "K" }];
 check("collections: pick by slug, default first, unknown falls back", () => {
   assert.strictEqual(pickCollection(COLS, "kirtanas").title, "K");

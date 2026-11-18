@@ -100,7 +100,9 @@
       // A cell may hold several lines (Enter inside the cell); the page shows them as typed.
       const line = { dev: cell(r.devanagari), te: cell(r.telugu), en: cell(r.transliteration), tes: cell(r.telugu_phonetic) };
       const order = lineNo && numeric ? toInt(lineNo, `Lines row ${r._row} line_no`) : r._row;
-      if (line.te) verses.get(key).lines.push({ order, line });  // Telugu is required; a row without it is ignored
+      const info = verses.get(key);  // optional meaning_te / meaning_en on a Lines row (for sheets with no Verses tab)
+      for (const k of ["te", "en"]) { const m = cell(r["meaning_" + k]); if (m && !info.mean[k]) info.mean[k] = m; }
+      if (line.te) info.lines.push({ order, line });  // Telugu is required; a row without it is ignored
     }
     for (const info of verses.values()) {
       const ls = info.lines.map((x, i) => ({ ...x, i })).sort((a, b) => a.order - b.order || a.i - b.i).map((x) => x.line);

@@ -258,8 +258,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="live_data.js?v=3"></script>
-<script src="collections.js?v=3"></script>
+<script src="live_data.js?v=4"></script>
+<script src="collections.js?v=4"></script>
 <script>
 let DATA = null;  // filled at start-up from the published Google Sheet
 const BAKED_TIMINGS = {};
@@ -418,7 +418,7 @@ function renderLyrics() {
   if (!S.lines.length) html = `<p class="hint" style="padding:10px">The spreadsheet has no lyrics for this ashtapadi yet. Use <b>+ Your own song</b> to paste them, or add them to the sheet.</p>`;
   S.lines.forEach((l) => {
     const key = l.kind + "|" + l.v;
-    if (key !== lastKey) { if (pend) html += meanHtml(pend); pend = null; lastKey = key; }  // a verse's meaning goes after its last line
+    if (key !== lastKey || l.mean) { if (pend) html += meanHtml(pend); pend = null; lastKey = key; }  // a verse's meaning goes after its last line
     if (l.mean) pend = { m: l.mean, id: ++mi };
     if (l.kind !== lastKind) { const head = l.kind === "sloka" ? "Opening slokas" : l.kind === "section" ? "" : CFG.part; if (head) html += `<div class="sep">${head}</div>`; lastKind = l.kind; }
     const showV = l.v !== lastV; lastV = l.v;

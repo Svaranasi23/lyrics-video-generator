@@ -24,6 +24,8 @@ Four tabs, described on the Sheet's own **Read me** tab:
 | Lines | one line of lyrics, in each script |
 | Videos | one recording of a song, with optional start and end seconds |
 
+A sheet that has no Verses tab can put `meaning_te` / `meaning_en` columns on the Lines tab instead (one meaning per row).
+
 The Sheet must be published: **File → Share → Publish to web → Entire document → Web page**.
 
 ## Collections and the home page
