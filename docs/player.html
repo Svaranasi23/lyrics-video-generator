@@ -487,6 +487,7 @@ function tick() {
 function selectSong(key, srcIndex) {
   S.openMeans = new Set();  // meanings you opened belong to the previous song
   S.song = S.songs.find((s) => s.key === key) || S.songs[0];
+  applyAvailableScripts(); syncPrefButtons();  // each song can have different scripts
   S.src = S.song.sources[srcIndex != null ? srcIndex : store.get(`gg-src:${S.song.key}`, 0)] || S.song.sources[0] || null;
   $("songSel").value = S.song.key; renderSources();
   buildLines(); loadTiming(); S.loop = false; $("loopBtn").classList.remove("on");
@@ -759,13 +760,16 @@ async function loadData() {
   }
 }
 
-function applyAvailableScripts() {  // hide scripts, word breaks and transliteration a collection has no text for
-  const has = LiveData.scriptsIn(DATA ? DATA.songs : []); S.has = has;
+function applyAvailableScripts() {  // hide scripts, word breaks and transliteration the SELECTED SONG has no text for
+  let has = LiveData.scriptsIn(S.song ? [S.song] : (DATA ? DATA.songs : []));
+  if (!Object.values(has).some(Boolean)) has = LiveData.scriptsIn(DATA ? DATA.songs : []);  // a song with no lyrics yet: use the collection's
+  S.has = has;
   if (!Object.values(has).some(Boolean)) return;
   [...$("scriptSel").options].forEach((o) => { o.hidden = o.disabled = !has[o.value]; });
   [...$("scriptSeg").children].forEach((b) => { b.hidden = !has[b.dataset.script]; });
   $("translitBtn").hidden = !has.en;
-  if (!has[prefs.script]) prefs.script = has.te ? "te" : Object.keys(has).find((k) => has[k] && k !== "tes");
+  // use the remembered choice when this song has it; otherwise show Telugu (the choice itself is not overwritten)
+  prefs.script = has[userScript] ? userScript : (has.te ? "te" : Object.keys(has).find((k) => has[k] && k !== "tes"));
 }
 function openColDialog() {
   $("colList").innerHTML = COLS.map((c) => { const nm = (c.names && c.names[prefs.script]) || (prefs.script === "te" && c.native) || c.title;
